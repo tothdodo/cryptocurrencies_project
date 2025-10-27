@@ -5,22 +5,37 @@ import { EventEmitter } from 'events'
 import { peerManager } from './peermanager'
 
 class Network {
-  /* TODO */
+  peers: Peer[] = []
 
   async init(bindPort: number, bindIP: string) {
     await peerManager.load()
 
     const server = net.createServer(socket => {
       logger.info(`New connection from peer ${socket.remoteAddress}`)
-      /* TODO */
-      // add peer to known peers
+      const peer = new Peer(
+          new MessageSocket(socket, `${socket.remoteAddress}:${socket.remotePort}`),
+          `${socket.remoteAddress}:${socket.remotePort}`
+      )
+      this.peers.push(peer)
+      peer.onConnect()
     })
 
     logger.info(`Listening for connections on port ${bindPort} and IP ${bindIP}`)
     server.listen(bindPort, bindIP)
 
-    /* TODO */
-    // perform initial connection to known peers 
+    for (const peerAddr of peerManager.knownPeers) {
+      logger.info(`Attempting connection to known peer ${peerAddr}`)
+      try {
+        const peer = new Peer(
+            MessageSocket.createClient(peerAddr),
+            peerAddr
+        )
+        this.peers.push(peer)
+      }
+      catch (e: any) {
+        logger.warn(`Failed to create connection to peer ${peerAddr}: ${e.message}`)
+      }
+    }
   }
 
   broadcast(obj: object) {
@@ -31,36 +46,46 @@ class Network {
 }
 
 export class MessageSocket extends EventEmitter {
+  buffer: string = '' // defragmentation buffer
   netSocket: net.Socket
   peerAddr: string
   /* TODO */
 
   static createClient(peerAddr: string) {
-    /* TODO */
+    const [host, portStr] = peerAddr.split(':')
+    const port = +portStr
+    if (port < 0 || port > 65535) {
+      throw new Error('Invalid port')
+    }
     const netSocket = new net.Socket()
     const socket = new MessageSocket(netSocket, peerAddr)
-    /* TODO */
+
+    netSocket.connect(port, host)
+
     return socket
   }
-
   constructor(netSocket: net.Socket, peerAddr: string) {
     super()
 
     this.peerAddr = peerAddr
     this.netSocket = netSocket
-    // what to do when data arrives
     this.netSocket.on('data', (data: string) => {
-      /* TODO: handle data */
+      this.buffer += data
+      const messages = this.buffer.split('\n')
+
+      if (messages.length > 1) {
+        for (const message of messages.slice(0, -1)) {
+          this.emit('message', message)
+        }
+        this.buffer = messages[messages.length - 1]
+      }
     })
-    /* TODO */
   }
-
   sendMessage(message: string) {
-    /* TODO */
+    this.netSocket.write(`${message}\n`)
   }
-
   end() {
-    /* TODO */
+    this.netSocket.end()
   }
 }
 

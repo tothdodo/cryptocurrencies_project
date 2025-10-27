@@ -5,6 +5,7 @@ import { TransactionInputObjectType,
          OutpointObjectType,
          SpendingTransactionObject } from './message'
 import { PublicKey, Signature } from './crypto/signature'
+import { canonicalize } from 'json-canonicalize'
 import { ver } from './crypto/signature'
 import { logger } from './logger'
 import { Block } from './block'

@@ -1,6 +1,7 @@
 import { BlockObject, BlockObjectType,
          TransactionObject, ObjectType } from './message'
 import { hash } from './crypto/hash'
+import { canonicalize } from 'json-canonicalize'
 import { Peer } from './peer'
 import { objectManager, ObjectId, db } from './object'
 import { UTXOSet } from './utxo'

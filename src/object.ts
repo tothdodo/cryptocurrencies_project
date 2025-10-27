@@ -1,6 +1,7 @@
 export type ObjectId = string
 
 import level from 'level-ts'
+import { canonicalize } from 'json-canonicalize'
 import { Object, ObjectType,
          TransactionObjectType, BlockObjectType } from './message'
 import { Transaction } from './transaction'

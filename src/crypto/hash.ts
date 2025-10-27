@@ -1,5 +1,5 @@
 /**
- * returns the sha256 representation of given string
+ * returns the hash of given string
  * @param str 
  */
 export function hash(str: string) {

@@ -59,12 +59,24 @@ export const BlockObject = Record({
 export type BlockObjectType = Static<typeof BlockObject>
 
 
-export const HelloMessage = String
-export type HelloMessageType = String
-export const GetPeersMessage = String
-export type GetPeersMessageType = String
-export const PeersMessage = String
-export type PeersMessageType = String
+export const HelloMessage = Record({
+  type: Literal('hello'),
+  version: String,
+  agent: String
+})
+export type HelloMessageType = Static<typeof HelloMessage>
+
+export const GetPeersMessage = Record({
+  type: Literal('getpeers')
+})
+export type GetPeersMessageType = Static<typeof GetPeersMessage>
+
+export const PeersMessage = Record({
+  type: Literal('peers'),
+  peers: Array(String)
+})
+export type PeersMessageType = Static<typeof PeersMessage>
+
 export const GetObjectMessage = String
 export type GetObjectMessageType = String
 export const IHaveObjectMessage = String
@@ -88,23 +100,27 @@ export type GetMempoolMessageType = String
 export const MempoolMessage = String
 export type MempoolMessageType = String
 
-export const ErrorMessage = String
-export type ErrorMessageType = String
+export const ErrorMessage = Record({
+  type: Literal('error'),
+  msg: String,
+  name: Union(Literal('INVALID_FORMAT'), Literal('INVALID_HANDSHAKE'), Literal('INVALID_TX_CONSERVATION'), Literal('INVALID_TX_SIGNATURE'), Literal('INVALID_TX_OUTPOINT'), Literal('INVALID_BLOCK_POW'), Literal('INVALID_BLOCK_TIMESTAMP'), Literal('INVALID_BLOCK_COINBASE'), Literal('INVALID_GENESIS'), Literal('UNKNOWN_OBJECT'), Literal('UNFINDABLE_OBJECT'), Literal('INVALID_ANCESTRY'))
+})
+export type ErrorMessageType = Static<typeof ErrorMessage>
 
 export const Messages = [
   HelloMessage,
   GetPeersMessage, PeersMessage,
-  IHaveObjectMessage, GetObjectMessage, ObjectMessage,
+  /*IHaveObjectMessage, GetObjectMessage, ObjectMessage,
   GetChainTipMessage, ChainTipMessage,
-  GetMempoolMessage, MempoolMessage,
+  GetMempoolMessage, MempoolMessage,*/
   ErrorMessage
 ]
 export const Message = Union(
   HelloMessage,
   GetPeersMessage, PeersMessage,
-  IHaveObjectMessage, GetObjectMessage, ObjectMessage,
+  /*IHaveObjectMessage, GetObjectMessage, ObjectMessage,
   GetChainTipMessage, ChainTipMessage,
-  GetMempoolMessage, MempoolMessage,
+  GetMempoolMessage, MempoolMessage,*/
   ErrorMessage
 )
 export type MessageType = Static<typeof Message>
