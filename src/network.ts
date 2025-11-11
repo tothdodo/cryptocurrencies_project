@@ -13,8 +13,8 @@ class Network {
     const server = net.createServer(socket => {
       logger.info(`New connection from peer ${socket.remoteAddress}`)
       const peer = new Peer(
-          new MessageSocket(socket, `${socket.remoteAddress}:${socket.remotePort}`),
-          `${socket.remoteAddress}:${socket.remotePort}`
+        new MessageSocket(socket, `${socket.remoteAddress}:${socket.remotePort}`),
+        `${socket.remoteAddress}:${socket.remotePort}`
       )
       this.peers.push(peer)
       peer.onConnect()
@@ -27,8 +27,8 @@ class Network {
       logger.info(`Attempting connection to known peer ${peerAddr}`)
       try {
         const peer = new Peer(
-            MessageSocket.createClient(peerAddr),
-            peerAddr
+          MessageSocket.createClient(peerAddr),
+          peerAddr
         )
         this.peers.push(peer)
       }
@@ -38,10 +38,22 @@ class Network {
     }
   }
 
-  broadcast(obj: object) {
+  async broadcast(obj: object) {
     logger.info(`Broadcasting object to all peers: %o`, obj)
 
     /* TODO */
+    for (const peer of this.peers) {
+      try {
+        // only advertise to active peers that completed handshake
+        if (!peer.active || !peer.handshakeCompleted) continue
+
+        // send asynchronous, await to surface errors if any
+        await peer.sendIHaveObject(obj)
+      }
+      catch (e: any) {
+        logger.warn(`Failed to send ihaveobject to peer ${peer.peerAddr}: ${e?.message ?? e}`)
+      }
+    }
   }
 }
 

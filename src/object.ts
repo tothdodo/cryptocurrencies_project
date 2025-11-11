@@ -2,12 +2,14 @@ export type ObjectId = string
 
 import level from 'level-ts'
 import { canonicalize } from 'json-canonicalize'
-import { Object, ObjectType,
-         TransactionObjectType, BlockObjectType } from './message'
+import {
+  Object, ObjectType,
+  TransactionObjectType, BlockObjectType
+} from './message'
 import { Transaction } from './transaction'
 import { Block } from './block'
 import { logger } from './logger'
-import { hash } from './crypto/hash'
+import { hash, normalize } from './crypto/hash'
 import { Peer } from './peer'
 import { Deferred, delay, resolveToReject } from './promise'
 import { mempool } from './mempool'
@@ -20,9 +22,11 @@ const OBJECT_AVAILABILITY_TIMEOUT = 5000 // ms
  */
 class ObjectManager {
   /* TODO */
+  knownObjectIds: Set<ObjectId> = new Set()
 
   id(obj: any) {
-    /* TODO */
+    const normalized = normalize(obj)
+    return hash(canonicalize(normalized))
   }
 
   /**
@@ -30,23 +34,27 @@ class ObjectManager {
    * @param objectid 
    */
   async exists(objectid: ObjectId) {
-    /* TODO */
+    return await db.exists(objectid)
   }
 
   async get(objectid: ObjectId) {
-    /* TODO */
+    return await db.get(objectid)
   }
 
   async del(objectid: ObjectId) {
-    /* TODO */
+    await db.del(objectid)
+    this.knownObjectIds.delete(objectid)
   }
 
-  async put(object: any) {
-    /* TODO */
+  async put(object: ObjectType) {
+    await db.put(this.id(object), object)
+    this.knownObjectIds.add(this.id(object))
   }
 
   async validate(object: ObjectType, peer: Peer) {
     /* TODO */
+    const validated = false; // placeholder
+    return validated;
   }
 
   /**
@@ -55,9 +63,14 @@ class ObjectManager {
    * @param peer the peer you want to get the object from
    * @returns the object, or rejects if not possible
    */
-  async retrieve(objectid: ObjectId, peer: Peer): Promise<Boolean>  { // todo: Promise<ObjectType>
+  async retrieve(objectid: ObjectId, peer: Peer): Promise<void> { // todo: Promise<ObjectType>
     /* TODO */
-    return true
+    const alreadyHave = await this.exists(objectid);
+    if (alreadyHave) {
+      return; // placeholder
+    }
+
+
   }
 }
 

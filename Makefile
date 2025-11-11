@@ -13,8 +13,9 @@ clean: remove-submission remove-test
 
 # add own tests if you want
 run-tests:
-	# Perform a simple connection check   
-	nc -zv localhost 18018	
+# Perform a simple connection check (default windows)  
+# nc -zv localhost 18018	
+	powershell -Command "Test-NetConnection -ComputerName localhost -Port 18018"
 
 
 
@@ -56,3 +57,10 @@ remove-test:
 
 remove-submission:
 	rm -rf _submission
+
+# tar −xf <your submission file> −C <grading directory>
+# cd <grading directory>
+# docker−compose build
+# docker−compose up −d
+## grader connects to local host port 18018 and runs test cases
+# docker−compose down −v

@@ -71,12 +71,24 @@ export class Peer {
   }
   async sendIHaveObject(obj: any) {
     /* TODO */
+    this.sendMessage({
+      type: 'ihaveobject',
+      objectid: objectManager.id(obj)
+    })
   }
   async sendObject(obj: any) {
     /* TODO */
+    this.sendMessage({
+      type: 'object',
+      object: obj
+    })
   }
   async sendGetObject(objid: ObjectId) {
     /* TODO */
+    this.sendMessage({
+      type: 'getobject',
+      objectid: objid
+    })
   }
   async sendGetChainTip() {
     /* TODO */
@@ -146,7 +158,7 @@ export class Peer {
     {
       if(typeof msg.type === 'string')
       {
-        if(['ihaveobject', 'getobject', 'object', 'getchaintip', 'chaintip', 'getmempool', 'mempool'].includes(msg.type))
+        if(['getchaintip', 'chaintip', 'getmempool', 'mempool'].includes(msg.type))
           return
       }
     }
@@ -170,10 +182,10 @@ export class Peer {
         },
         this.onMessageGetPeers.bind(this),
         this.onMessagePeers.bind(this),
-        /*this.onMessageIHaveObject.bind(this),
+        this.onMessageIHaveObject.bind(this),
         this.onMessageGetObject.bind(this),
         this.onMessageObject.bind(this),
-        this.onMessageGetChainTip.bind(this),
+        /*this.onMessageGetChainTip.bind(this),
         this.onMessageChainTip.bind(this),
         this.onMessageGetMempool.bind(this),
         this.onMessageMempool.bind(this),*/
@@ -224,12 +236,24 @@ export class Peer {
   }
   async onMessageIHaveObject(msg: IHaveObjectMessageType) {
     /* TODO */
+    const objExists = await objectManager.exists(msg.objectid);
+    if (!objExists) {
+      await this.sendGetObject(msg.objectid);
+    }
   }
   async onMessageGetObject(msg: GetObjectMessageType) {
     /* TODO */
+    const obj = await objectManager.get(msg.objectid);
+    if (obj !== undefined) {
+      await this.sendObject(obj);
+    }
   }
   async onMessageObject(msg: ObjectMessageType) {
     /* TODO */
+    if (await objectManager.validate(msg.object, this)) {
+      await objectManager.put(msg.object);
+      await network.broadcast(msg.object);
+    }
   }
   async onMessageGetChainTip(msg: GetChainTipMessageType) {
     /* TODO */

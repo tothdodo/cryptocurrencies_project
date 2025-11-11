@@ -77,16 +77,36 @@ export const PeersMessage = Record({
 })
 export type PeersMessageType = Static<typeof PeersMessage>
 
-export const GetObjectMessage = String
-export type GetObjectMessageType = String
-export const IHaveObjectMessage = String
-export type IHaveObjectMessageType = String
+export const GetObjectMessage = Record({
+  type: Literal('getobject'),
+  objectid: String
+})
+export type GetObjectMessageType = Static<typeof GetObjectMessage>
 
-export const Object = String
-export type ObjectType = String
+export const IHaveObjectMessage = Record({
+  type: Literal('ihaveobject'),
+  objectid: String
+})
+export type IHaveObjectMessageType = Static<typeof IHaveObjectMessage>
 
-export const ObjectMessage = String
-export type ObjectMessageType = String
+export const Object = Record({
+  T: Hash,
+  created: Number,
+  miner: Optional(String), /* TODO: enforce checks */
+  nonce: String,
+  note: Optional(String), /* TODO: enforce checks */
+  previd: Union(Hash, Null),
+  txids: Array(Hash),
+  type: Union(Literal('transaction'), Literal('block')),
+})
+
+export type ObjectType = Static<typeof Object>
+
+export const ObjectMessage = Record({
+  type: Literal('object'),
+  object: Object
+})
+export type ObjectMessageType = Static<typeof ObjectMessage>
 
 export const GetChainTipMessage = String
 export type GetChainTipMessageType = String
@@ -110,16 +130,16 @@ export type ErrorMessageType = Static<typeof ErrorMessage>
 export const Messages = [
   HelloMessage,
   GetPeersMessage, PeersMessage,
-  /*IHaveObjectMessage, GetObjectMessage, ObjectMessage,
-  GetChainTipMessage, ChainTipMessage,
+  IHaveObjectMessage, GetObjectMessage, ObjectMessage,
+  /*GetChainTipMessage, ChainTipMessage,
   GetMempoolMessage, MempoolMessage,*/
   ErrorMessage
 ]
 export const Message = Union(
   HelloMessage,
   GetPeersMessage, PeersMessage,
-  /*IHaveObjectMessage, GetObjectMessage, ObjectMessage,
-  GetChainTipMessage, ChainTipMessage,
+  IHaveObjectMessage, GetObjectMessage, ObjectMessage,
+  /*GetChainTipMessage, ChainTipMessage,
   GetMempoolMessage, MempoolMessage,*/
   ErrorMessage
 )
