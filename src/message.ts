@@ -7,10 +7,10 @@ import { Literal,
  * This file defines all Objects and Message Types that can be conveniently be used later
  */
 
-const Hash = String.withConstraint(s => true) /* TODO */
-const Sig = String.withConstraint(s => true) /* TODO */
-const PK = String.withConstraint(s => true) /* TODO */
-const NonNegative = Number.withConstraint(n => true) /* TODO */
+const Hash = String.withConstraint(s => /^[0-9a-f]{64}$/i.test(s));
+const Sig = String.withConstraint(s => /^[0-9a-f]{128}$/i.test(s));
+const PK = String.withConstraint(s => /^[0-9a-f]{64}$/i.test(s));
+const NonNegative = Number.withConstraint(n => n >= 0);
 const Coins = NonNegative
 
 /**
@@ -18,8 +18,8 @@ const Coins = NonNegative
  *  containing properties txid of type Hash and index of type NonNegative  
  */
 export const OutpointObject = Record({
-  txid: Hash,
-  index: NonNegative
+  txid: Hash, // object id of the previous transaction
+  index: NonNegative // index of the output in the previous transaction
 })
 
 /**
@@ -40,11 +40,20 @@ export const TransactionOutputObject = Record({
 })
 export type TransactionOutputObjectType = Static<typeof TransactionOutputObject>
 
-/* TODO */
-export const CoinbaseTransactionObject = Boolean
+export const CoinbaseTransactionObject = Record({
+  type: Literal('transaction'),
+  height: NonNegative,
+  outputs: Array(TransactionOutputObject)
+})
+
 export const SpendingTransactionObject = Boolean
-export const TransactionObject = Boolean
-export type TransactionObjectType = Boolean
+
+export const TransactionObject = Record({
+  type: Literal('transaction'),
+  inputs: Array(TransactionInputObject),
+  outputs: Array(TransactionOutputObject)
+})
+export type TransactionObjectType = Static<typeof TransactionObject>
 
 export const BlockObject = Record({
   type: Literal('block'),
