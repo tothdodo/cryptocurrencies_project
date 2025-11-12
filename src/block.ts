@@ -68,7 +68,7 @@ export class Block {
    */
   async getCoinbase(): Promise<Transaction> {
     /* TODO */
-    return new Transaction();
+    return new Transaction([], [], 0);
   }
 
   hasPoW(): boolean {
@@ -122,8 +122,9 @@ export class Block {
    * Validate this block, throwing an error if validation failed
    * @throws Error
    */
-  async validate(/* TODO */) {
+  async validate(/* TODO */): Promise<Boolean> {
     /* TODO */
+    return true;
   }
 
   /**

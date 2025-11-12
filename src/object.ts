@@ -55,7 +55,7 @@ class ObjectManager {
     this.knownObjectIds.add(this.id(object))
   }
 
-  async validate(object: ObjectType, peer: Peer) {
+  async validate(object: ObjectType, peer: Peer): Promise<Boolean> {
     /* TODO */
     if (object.type === 'transaction') {
       const tx = Transaction.fromNetworkObject(object as TransactionObjectType);

@@ -4,7 +4,8 @@ import {
   TransactionObjectType,
   TransactionOutputObjectType,
   OutpointObjectType,
-  SpendingTransactionObject
+  SpendingTransactionObject,
+  TransactionOutputObject
 } from './message'
 import { PublicKey, Signature } from './crypto/signature'
 import { canonicalize } from 'json-canonicalize'
@@ -55,6 +56,9 @@ export class Outpoint {
    */
   async resolve(): Promise<Output> {
     const outpointedTx = await objectManager.get(this.txid);
+    if (outpointedTx === null || outpointedTx.outpoint.length <= this.index || this.index < 0) {
+      throw new Error();
+    }
     const output = outpointedTx.outputs[this.index];
     return new Output(output.pubkey, output.value);
   }
@@ -146,9 +150,56 @@ export class Transaction {
     /* TODO */
     return !('inputs' in this) && typeof this.height === 'number';
   }
-  async validate(idx?: number, block?: Block) {
+  async validate(idx?: number, block?: Block): Promise<Boolean> {
     /* TODO */
+    // validate 0: assume coinbase transactions are always valid
+    if (this.isCoinbase()) {
+      return true;
+    }
+    let inputSum: number = 0;
+    for (let input of this.inputs!) {
+      try {
+        // validate 1: verify that the referenced output exists
+        const resolvedOutput = await input.outpoint.resolve();
+        if (input.signature === null) {
+          return false;
+        }
+        // validate 2: verify the signature
+        // An input contains a pointer to a previous output in the outpoint key and a signature in the
+        // sig key. The outpoint key contains a dictionary of two keys: txid and index. The txid is
+        // the objectid of the previous transaction, while the index is the natural number (zero-based)
+        // indexing an output within that transaction. The sig key contains the signature.
+        const sigVerified = await ver(input.signature, this.toString(), resolvedOutput.publickey)
+        if (!sigVerified) {
+          return false;
+        }
+        inputSum += resolvedOutput.value;
+      } catch (error) {
+        return false;
+      }
+    }
+    // validate 3: outputs validation
+    // Outputs contain a public key and a value. The public keys must be in the correct
+    // format and the values must be a non-negative integer.
+    try {
+      for (let output of this.outputs) {
+        const networkOutput: TransactionOutputObjectType = output.toNetworkObject();
+        TransactionOutputObject.check(networkOutput);
+      }
+    } catch (error) {
+      return false;
+    }
+    // validate 4: verify input/output value balance
+    // Transactions must satisfy the weak law of conservation: The sum of input values must be
+    // equal or exceed the sum of output values. Any remaining value can be collected as fees by
+    // the miner confirming the transaction.
+    const outputSum = this.outputs.reduce((sum, output) => sum + output.value, 0);
+    if (inputSum < outputSum) {
+      return false;
+    }
+    return true;
   }
+
   inputsUnsigned() {
     /* TODO */
     if (!this.inputs) {
