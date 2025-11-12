@@ -46,13 +46,17 @@ export const CoinbaseTransactionObject = Record({
   outputs: Array(TransactionOutputObject)
 })
 
-export const SpendingTransactionObject = Boolean
-
-export const TransactionObject = Record({
+export const SpendingTransactionObject = Record({
   type: Literal('transaction'),
   inputs: Array(TransactionInputObject),
   outputs: Array(TransactionOutputObject)
 })
+
+export const TransactionObject = Union(
+  CoinbaseTransactionObject,
+  SpendingTransactionObject
+)
+
 export type TransactionObjectType = Static<typeof TransactionObject>
 
 export const BlockObject = Record({
@@ -98,16 +102,7 @@ export const IHaveObjectMessage = Record({
 })
 export type IHaveObjectMessageType = Static<typeof IHaveObjectMessage>
 
-export const Object = Record({
-  T: Hash,
-  created: Number,
-  miner: Optional(String), /* TODO: enforce checks */
-  nonce: String,
-  note: Optional(String), /* TODO: enforce checks */
-  previd: Union(Hash, Null),
-  txids: Array(Hash),
-  type: Union(Literal('transaction'), Literal('block')),
-})
+export const Object = Union(TransactionObject, BlockObject)
 
 export type ObjectType = Static<typeof Object>
 

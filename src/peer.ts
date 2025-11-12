@@ -244,7 +244,7 @@ export class Peer {
   async onMessageGetObject(msg: GetObjectMessageType) {
     /* TODO */
     const obj = await objectManager.get(msg.objectid);
-    if (obj !== undefined) {
+    if (obj !== null) {
       await this.sendObject(obj);
     }
   }

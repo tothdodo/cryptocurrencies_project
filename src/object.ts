@@ -38,7 +38,11 @@ class ObjectManager {
   }
 
   async get(objectid: ObjectId) {
-    return await db.get(objectid)
+    try {
+      return await db.get(objectid)
+    } catch {
+      return null;
+    }
   }
 
   async del(objectid: ObjectId) {
@@ -53,8 +57,15 @@ class ObjectManager {
 
   async validate(object: ObjectType, peer: Peer) {
     /* TODO */
-    const validated = false; // placeholder
-    return validated;
+    if (object.type === 'transaction') {
+      const tx = Transaction.fromNetworkObject(object as TransactionObjectType);
+      return tx.validate();
+    }
+    if (object.type === 'block') {
+      const block = await Block.fromNetworkObject(object as BlockObjectType);
+      return block.validate();
+    }
+    return false;
   }
 
   /**
