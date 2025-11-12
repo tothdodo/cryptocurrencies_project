@@ -1,21 +1,22 @@
 import { logger } from './logger'
 import { MessageSocket } from './network'
-import { Messages,
-         Message,
-         HelloMessage,
-         PeersMessage, GetPeersMessage,
-         IHaveObjectMessage, GetObjectMessage, ObjectMessage,
-         GetChainTipMessage, ChainTipMessage,
-         ErrorMessage,
-         MessageType,
-         HelloMessageType,
-         PeersMessageType, GetPeersMessageType,
-         IHaveObjectMessageType, GetObjectMessageType, ObjectMessageType,
-         GetChainTipMessageType, ChainTipMessageType,
-         ErrorMessageType,
-         GetMempoolMessageType,
-         MempoolMessageType
-        } from './message'
+import {
+  Messages,
+  Message,
+  HelloMessage,
+  PeersMessage, GetPeersMessage,
+  IHaveObjectMessage, GetObjectMessage, ObjectMessage,
+  GetChainTipMessage, ChainTipMessage,
+  ErrorMessage,
+  MessageType,
+  HelloMessageType,
+  PeersMessageType, GetPeersMessageType,
+  IHaveObjectMessageType, GetObjectMessageType, ObjectMessageType,
+  GetChainTipMessageType, ChainTipMessageType,
+  ErrorMessageType,
+  GetMempoolMessageType,
+  MempoolMessageType
+} from './message'
 import { peerManager } from './peermanager'
 import { canonicalize } from 'json-canonicalize'
 import { db, objectManager } from './object'
@@ -27,17 +28,27 @@ import { mempool } from './mempool'
 const VERSION = '0.10.1'
 const NAME = 'Typescript skeleton for task 2' /* TODO */
 
-const INVALID_FORMAT = 'INVALID_FORMAT'
-const INVALID_HANDSHAKE = 'INVALID_HANDSHAKE'
+export const INVALID_FORMAT = 'INVALID_FORMAT'
+export const INVALID_HANDSHAKE = 'INVALID_HANDSHAKE'
+export const INVALID_TX_CONSERVATION = 'INVALID_TX_CONSERVATION'
+export const INVALID_TX_SIGNATURE = 'INVALID_TX_SIGNATURE'
+export const INVALID_TX_OUTPOINT = 'INVALID_TX_OUTPOINT'
+export const INVALID_BLOCK_POW = 'INVALID_BLOCK_POW'
+export const INVALID_BLOCK_TIMESTAMP = 'INVALID_BLOCK_TIMESTAMP'
+export const INVALID_BLOCK_COINBASE = 'INVALID_BLOCK_COINBASE'
+export const INVALID_GENESIS = 'INVALID_GENESIS'
+export const UNKNOWN_OBJECT = 'UNKNOWN_OBJECT'
+export const UNFINDABLE_OBJECT = 'UNFINDABLE_OBJECT'
+export const INVALID_ANCESTRY = 'INVALID_ANCESTRY'
 
 // Number of peers that each peer is allowed to report to us
 const MAX_PEERS_PER_PEER = 30
 
-function shuffleArray(array: Array<String>) : Array<String> {
+function shuffleArray(array: Array<String>): Array<String> {
   let len = array.length,
-      currentIndex;
+    currentIndex;
   for (currentIndex = len - 1; currentIndex > 0; currentIndex--) {
-    let randIndex = Math.floor(Math.random() * (currentIndex + 1) );
+    let randIndex = Math.floor(Math.random() * (currentIndex + 1));
     var temp = array[currentIndex];
     array[currentIndex] = array[randIndex];
     array[randIndex] = temp;
@@ -131,7 +142,7 @@ export class Peer {
     setTimeout(() => {
       if (!this.handshakeCompleted) {
         logger.info(
-            `Peer ${this.peerAddr} failed to handshake within time limit.`
+          `Peer ${this.peerAddr} failed to handshake within time limit.`
         )
         this.fatalError('No handshake within time limit.', INVALID_HANDSHAKE)
       }
@@ -154,11 +165,9 @@ export class Peer {
     }
     // for now, ignore messages that have a valid type but that we don't yet know how to parse
     // TODO: remove
-    if('type' in msg)
-    {
-      if(typeof msg.type === 'string')
-      {
-        if(['getchaintip', 'chaintip', 'getmempool', 'mempool'].includes(msg.type))
+    if ('type' in msg) {
+      if (typeof msg.type === 'string') {
+        if (['getchaintip', 'chaintip', 'getmempool', 'mempool'].includes(msg.type))
           return
       }
     }
@@ -166,7 +175,7 @@ export class Peer {
     if (!Message.guard(msg)) {
       const validation = Message.validate(msg)
       return await this.fatalError(
-          `The received message does not match one of the known message formats: ${message}
+        `The received message does not match one of the known message formats: ${message}
          Validation error: ${JSON.stringify(validation)}`, INVALID_FORMAT
       )
     }
@@ -177,19 +186,19 @@ export class Peer {
       return await this.fatalError(`Received message ${message} prior to "hello"`, INVALID_HANDSHAKE)
     }
     Message.match(
-        async () => {
-          return await this.fatalError(`Received a second "hello" message, even though handshake is completed`, INVALID_HANDSHAKE)
-        },
-        this.onMessageGetPeers.bind(this),
-        this.onMessagePeers.bind(this),
-        this.onMessageIHaveObject.bind(this),
-        this.onMessageGetObject.bind(this),
-        this.onMessageObject.bind(this),
-        /*this.onMessageGetChainTip.bind(this),
-        this.onMessageChainTip.bind(this),
-        this.onMessageGetMempool.bind(this),
-        this.onMessageMempool.bind(this),*/
-        this.onMessageError.bind(this)
+      async () => {
+        return await this.fatalError(`Received a second "hello" message, even though handshake is completed`, INVALID_HANDSHAKE)
+      },
+      this.onMessageGetPeers.bind(this),
+      this.onMessagePeers.bind(this),
+      this.onMessageIHaveObject.bind(this),
+      this.onMessageGetObject.bind(this),
+      this.onMessageObject.bind(this),
+      /*this.onMessageGetChainTip.bind(this),
+      this.onMessageChainTip.bind(this),
+      this.onMessageGetMempool.bind(this),
+      this.onMessageMempool.bind(this),*/
+      this.onMessageError.bind(this)
     )(msg)
   }
 
@@ -202,7 +211,7 @@ export class Peer {
     this.handshakeCompleted = true
   }
   async onMessagePeers(msg: PeersMessageType) {
-    if(msg.peers.length > 30)
+    if (msg.peers.length > 30)
       return await this.fatalError(`Send too many peers`, INVALID_FORMAT)
 
     for (const peer of msg.peers) {
@@ -241,6 +250,7 @@ export class Peer {
       await this.sendGetObject(msg.objectid);
     }
   }
+
   async onMessageGetObject(msg: GetObjectMessageType) {
     /* TODO */
     const obj = await objectManager.get(msg.objectid);
@@ -272,9 +282,9 @@ export class Peer {
   }
   log(level: string, message: string, ...args: any[]) {
     logger.log(
-        level,
-        `[peer ${this.socket.peerAddr}:${this.socket.netSocket.remotePort}] ${message}`,
-        ...args
+      level,
+      `[peer ${this.socket.peerAddr}:${this.socket.netSocket.remotePort}] ${message}`,
+      ...args
     )
   }
   warn(message: string, ...args: any[]) {

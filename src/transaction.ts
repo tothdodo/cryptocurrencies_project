@@ -12,6 +12,7 @@ import { canonicalize } from 'json-canonicalize'
 import { ver } from './crypto/signature'
 import { logger } from './logger'
 import { Block } from './block'
+import { INVALID_ANCESTRY, INVALID_FORMAT, INVALID_TX_CONSERVATION, INVALID_TX_OUTPOINT, INVALID_TX_SIGNATURE, Peer, UNKNOWN_OBJECT } from './peer'
 
 /**
  * a class to represent a transaction output
@@ -54,9 +55,27 @@ export class Outpoint {
    * Gets the output referenced by this outpoint
    * @returns the referenced output
    */
-  async resolve(): Promise<Output> {
+  async resolve(peer: Peer): Promise<Output> {
     const outpointedTx = await objectManager.get(this.txid);
-    if (outpointedTx === null || outpointedTx.outpoint.length <= this.index || this.index < 0) {
+    if (outpointedTx === null) {
+      //console.log(`The referenced transaction ${this.txid} does not exist in the database. UNKNOWN_OBJECT`)
+      peer?.fatalError(`The referenced transaction ${this.txid} does not exist in the database.`, UNKNOWN_OBJECT)
+      throw new Error();
+    }
+    if (outpointedTx.type === "block") {
+      //console.log("An object with id ${this.txid} exists but is a block `, INVALID_FORMAT")
+      peer?.fatalError(`An object with id ${this.txid} exists but is a block `, INVALID_FORMAT);
+      throw new Error();
+    }
+    //console.log(outpointedTx)
+    if (outpointedTx.outputs.length <= this.index || this.index < 0) {
+      //console.log("The referenced transaction ${this.txid} has no output at index ${this.index}.`, INVALID_TX_OUTPOINT")
+      peer?.fatalError(`The referenced transaction ${this.txid} has no output at index ${this.index}.`, INVALID_TX_OUTPOINT)
+      throw new Error();
+    }
+    if (!await objectManager.validate(outpointedTx, peer)) {
+      //console.log("The referenced transaction ${this.txid} is invalid.`, INVALID_ANCESTRY")
+      peer?.fatalError(`The referenced transaction ${this.txid} is invalid.`, INVALID_ANCESTRY)
       throw new Error();
     }
     const output = outpointedTx.outputs[this.index];
@@ -148,9 +167,9 @@ export class Transaction {
 
   isCoinbase(): Boolean {
     /* TODO */
-    return !('inputs' in this) && typeof this.height === 'number';
+    return this.inputs === undefined && typeof this.height === 'number';
   }
-  async validate(idx?: number, block?: Block): Promise<Boolean> {
+  async validate(peer: Peer, idx?: number, block?: Block): Promise<Boolean> {
     /* TODO */
     // validate 0: assume coinbase transactions are always valid
     if (this.isCoinbase()) {
@@ -160,8 +179,10 @@ export class Transaction {
     for (let input of this.inputs!) {
       try {
         // validate 1: verify that the referenced output exists
-        const resolvedOutput = await input.outpoint.resolve();
+        const resolvedOutput = await input.outpoint.resolve(peer);
         if (input.signature === null) {
+          peer?.fatalError("Signature is null", INVALID_TX_SIGNATURE)
+          //console.log("Signature is null, INVALID_TX_SIGNATURE")
           return false;
         }
         // validate 2: verify the signature
@@ -171,10 +192,13 @@ export class Transaction {
         // indexing an output within that transaction. The sig key contains the signature.
         const sigVerified = await ver(input.signature, this.toString(), resolvedOutput.publickey)
         if (!sigVerified) {
+          peer?.fatalError("Verifying the signature has failed", INVALID_TX_SIGNATURE)
+          //console.log("Verifying the signature has failed, INVALID_TX_SIGNATURE")
           return false;
         }
         inputSum += resolvedOutput.value;
       } catch (error) {
+        //console.log(error)
         return false;
       }
     }
@@ -187,6 +211,8 @@ export class Transaction {
         TransactionOutputObject.check(networkOutput);
       }
     } catch (error) {
+      peer?.fatalError("Output key formats are not valid", INVALID_FORMAT)
+      //console.log("Output key formats are not valid, INVALID_FORMAT")
       return false;
     }
     // validate 4: verify input/output value balance
@@ -195,6 +221,8 @@ export class Transaction {
     // the miner confirming the transaction.
     const outputSum = this.outputs.reduce((sum, output) => sum + output.value, 0);
     if (inputSum < outputSum) {
+      peer?.fatalError(`The output(s) sum in the referenced transaction(s) hold(s) less than ${outputSum} picaker`, INVALID_TX_CONSERVATION)
+      //console.log("The output(s) sum in the referenced transaction(s) hold(s) less than ${outputSum} picaker`, INVALID_TX_CONSERVATION")
       return false;
     }
     return true;
