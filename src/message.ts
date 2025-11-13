@@ -92,13 +92,13 @@ export type PeersMessageType = Static<typeof PeersMessage>
 
 export const GetObjectMessage = Record({
   type: Literal('getobject'),
-  objectid: String
+  objectid: Hash
 })
 export type GetObjectMessageType = Static<typeof GetObjectMessage>
 
 export const IHaveObjectMessage = Record({
   type: Literal('ihaveobject'),
-  objectid: String
+  objectid: Hash
 })
 export type IHaveObjectMessageType = Static<typeof IHaveObjectMessage>
 

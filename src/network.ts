@@ -41,19 +41,15 @@ class Network {
   async broadcast(obj: object) {
     logger.info(`Broadcasting object to all peers: %o`, obj)
 
-    /* TODO */
-    for (const peer of this.peers) {
-      try {
-        // only advertise to active peers that completed handshake
-        if (!peer.active || !peer.handshakeCompleted) continue
-
-        // send asynchronous, await to surface errors if any
-        await peer.sendIHaveObject(obj)
-      }
-      catch (e: any) {
-        logger.warn(`Failed to send ihaveobject to peer ${peer.peerAddr}: ${e?.message ?? e}`)
-      }
-    }
+    await Promise.all(
+      this.peers.map(async (peer) => {
+        try {
+          await peer.sendIHaveObject(obj);
+        } catch (e: any) {
+          logger.warn(`Failed to send ihaveobject to peer ${peer.peerAddr}: ${e?.message ?? e}`);
+        }
+      })
+    );
   }
 }
 

@@ -129,7 +129,8 @@ export class Peer {
   async fatalError(msg: string, name: string) {
     await this.sendError(msg, name)
     this.warn(`Peer error: ${name}: ${msg}`)
-    this.fail()
+    if (name !== UNKNOWN_OBJECT)
+      this.fail()
   }
   async fail() {
     this.active = false
@@ -244,7 +245,6 @@ export class Peer {
     await this.sendPeers()
   }
   async onMessageIHaveObject(msg: IHaveObjectMessageType) {
-    /* TODO */
     const objExists = await objectManager.exists(msg.objectid);
     if (!objExists) {
       await this.sendGetObject(msg.objectid);
@@ -252,14 +252,12 @@ export class Peer {
   }
 
   async onMessageGetObject(msg: GetObjectMessageType) {
-    /* TODO */
     const obj = await objectManager.get(msg.objectid);
     if (obj !== null) {
       await this.sendObject(obj);
     }
   }
   async onMessageObject(msg: ObjectMessageType) {
-    /* TODO */
     if (await objectManager.validate(msg.object, this)) {
       await objectManager.put(msg.object);
       await network.broadcast(msg.object);

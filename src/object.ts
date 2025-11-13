@@ -10,7 +10,7 @@ import { Transaction } from './transaction'
 import { Block } from './block'
 import { logger } from './logger'
 import { hash, normalize } from './crypto/hash'
-import { Peer } from './peer'
+import { INVALID_FORMAT, Peer } from './peer'
 import { Deferred, delay, resolveToReject } from './promise'
 import { mempool } from './mempool'
 
@@ -21,7 +21,6 @@ const OBJECT_AVAILABILITY_TIMEOUT = 5000 // ms
  * Interfaces the database
  */
 class ObjectManager {
-  /* TODO */
   knownObjectIds: Set<ObjectId> = new Set()
 
   id(obj: any) {
@@ -45,18 +44,6 @@ class ObjectManager {
     }
   }
 
-  async getAll(): Promise<Record<string, ObjectType>> {
-    const entries = await db.stream({ keys: true, values: true });
-    const result: Record<string, ObjectType> = {};
-
-    for (const { key, value } of entries) {
-      result[key] = value;
-    }
-
-    return result;
-  }
-
-
   async del(objectid: ObjectId) {
     await db.del(objectid)
     this.knownObjectIds.delete(objectid)
@@ -68,24 +55,12 @@ class ObjectManager {
     this.knownObjectIds.add(id)
   }
 
-  async putTest(id: string, object: ObjectType) {
-    await db.put(id, object);
-    this.knownObjectIds.add(this.id(object))
-  }
-
-  // IMPORTANT
-  // VISSZA peer?: Peer ÉS peer!
-  // IMPORTANT
-  async validate(object: ObjectType, peer?: Peer): Promise<Boolean> {
-    /* TODO */
+  async validate(object: ObjectType, peer: Peer): Promise<Boolean> {
     if (object.type === 'transaction') {
       const tx = Transaction.fromNetworkObject(object as TransactionObjectType);
-      return tx.validate(peer!);
+      return tx.validate(peer);
     }
-    if (object.type === 'block') {
-      const block = await Block.fromNetworkObject(object as BlockObjectType);
-      return block.validate();
-    }
+    peer.fatalError("Invalid object type.", INVALID_FORMAT);
     return false;
   }
 
@@ -96,14 +71,24 @@ class ObjectManager {
    * @returns the object, or rejects if not possible
    */
   async retrieve(objectid: ObjectId, peer: Peer): Promise<void> { // todo: Promise<ObjectType>
-    /* TODO */
-    const alreadyHave = await this.exists(objectid);
-    if (alreadyHave) {
-      return; // placeholder
-    }
-
-
+    peer.sendGetObject(objectid);
   }
+
+  // async getAll(): Promise<Record<string, ObjectType>> {
+  //   const entries = await db.stream({ keys: true, values: true });
+  //   const result: Record<string, ObjectType> = {};
+
+  //   for (const { key, value } of entries) {
+  //     result[key] = value;
+  //   }
+
+  //   return result;
+  // }
+
+  // async putTest(id: string, object: ObjectType) {
+  //   await db.put(id, object);
+  //   this.knownObjectIds.add(this.id(object))
+  // }
 }
 
 export const objectManager = new ObjectManager()

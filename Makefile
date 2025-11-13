@@ -15,9 +15,9 @@ clean: remove-submission remove-test
 run-tests:
 # Perform a simple connection check (default windows)  
 #	nc -zv localhost 18018	
-#	powershell -Command "Test-NetConnection -ComputerName localhost -Port 18018"
-	npx tsc --noEmit
-	npx ts-node my-tests/exercise-2.test.ts
+	powershell -Command "Test-NetConnection -ComputerName localhost -Port 18018"
+#	npx tsc --noEmit
+#	npx ts-node my-tests/exercise-2.test.ts
 
 
 # don't touch these targets 
@@ -32,7 +32,7 @@ docker-down:
 
 submission:
 	mkdir -p _submission
-	tar --exclude='./.idea' --exclude='./.git' --exclude='./node_modules' --exclude='./_submission' --exclude='./_test' -czf _submission/submission.tgz .
+	tar --exclude='./.idea' --exclude='./.git' --exclude='./node_modules' --exclude='./_submission' --exclude='./my-tests' --exclude='./_test' -czf _submission/submission.tgz .
 	@echo Finished creating submission archive _submission/submission.tgz
 	@echo Run make check-submission now to check if our automated grader will be able to connect to it
 

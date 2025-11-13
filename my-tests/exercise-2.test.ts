@@ -42,26 +42,26 @@ async function main() {
     //     }
     // )
 
-    const savedObjects = await objectManager.getAll();
-    console.log(`📦 Loaded ${savedObjects.length} objects from the database.`);
-    console.log("📦 All objects:\n", JSON.stringify(savedObjects, null, 2));
-    console.log("DB/---------------------------------------------------------------")
-    // Broadcast objects to peers
-    for (let o of testObjects) {
-        const isValid = await objectManager.validate(normalize(o).object);
-        if (isValid) {
-            console.log(`✅ Object ${objectManager.id(o)} is valid`);
-            objectManager.put(o);
-        } else {
-            console.log(`❌ Object ${objectManager.id(normalize(o).object)} is invalid`);
-            console.log(normalize(o).object)
-        }
-        console.log("---------------------------------------------------------------")
-        // modify the "if" so the last element does not wait
-        if (testObjects.indexOf(o) !== testObjects.length - 1) {
-            await delay(2000); // slight delay to avoid overwhelming
-        }
-    }
+    // const savedObjects = await objectManager.getAll();
+    // console.log(`📦 Loaded ${savedObjects.length} objects from the database.`);
+    // console.log("📦 All objects:\n", JSON.stringify(savedObjects, null, 2));
+    // console.log("DB/---------------------------------------------------------------")
+    // // Broadcast objects to peers
+    // for (let o of testObjects) {
+    //     const isValid = await objectManager.validate(normalize(o).object);
+    //     if (isValid) {
+    //         console.log(`✅ Object ${objectManager.id(o)} is valid`);
+    //         objectManager.put(o);
+    //     } else {
+    //         console.log(`❌ Object ${objectManager.id(normalize(o).object)} is invalid`);
+    //         console.log(normalize(o).object)
+    //     }
+    //     console.log("---------------------------------------------------------------")
+    //     // modify the "if" so the last element does not wait
+    //     if (testObjects.indexOf(o) !== testObjects.length - 1) {
+    //         await delay(2000); // slight delay to avoid overwhelming
+    //     }
+    // }
 }
 
 // Run test and catch errors
