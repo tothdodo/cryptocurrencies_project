@@ -10,6 +10,8 @@ build:
 clean: remove-submission remove-test
 	rm -rf node_modules
 	# add further actions if needed
+	rm -rf db
+	rm -rf dist
 
 # add own tests if you want
 run-tests:

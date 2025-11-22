@@ -3,7 +3,7 @@ import { logger } from './logger'
 import isValidHostname from 'is-valid-hostname'
 
 const BOOTSTRAP_PEERS: string[] = [
-  '128.130.122.101:18018'
+  '128.130.122.73:18018'
 ]
 
 class PeerManager {

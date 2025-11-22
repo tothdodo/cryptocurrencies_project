@@ -1,7 +1,9 @@
+import { blake2sHex } from "blakejs";
+
 /**
  * returns the hash of given string
- * @param str 
+ * @param str
  */
 export function hash(str: string) {
-  /* TODO */
+    return blake2sHex(str);
 }

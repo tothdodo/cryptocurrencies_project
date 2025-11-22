@@ -10,12 +10,12 @@ import { Transaction } from './transaction'
 import { chainManager } from './chain'
 import { Deferred } from './promise'
 
-const TARGET = '0000abc000000000000000000000000000000000000000000000000000000000' /* TODO */
+const TARGET = '0' /* TODO */
 const GENESIS: BlockObjectType = {
-  "T":"0000abc000000000000000000000000000000000000000000000000000000000",
+  "T":"00000000abc00000000000000000000000000000000000000000000000000000",
   "created":1671062400,
   "miner":"Marabu",
-  "nonce":"00000000000000000000000000000000000000000000000000000000005bb0f2",
+  "nonce":"000000000000000000000000000000000000000000000000000000021bea03ed",
   "note":"The New York Times 2022-12-13: Scientists Achieve Nuclear Fusion Breakthrough With Blast of 192 Lasers",
   "previd": null,
   "txids":[],
@@ -68,7 +68,7 @@ export class Block {
    */
   async getCoinbase(): Promise<Transaction> {
     /* TODO */
-    return new Transaction();
+    return new Transaction("d46d09138f0251edc32e28f1a744cb0b7286850e4c9c777d7e3c6e459b289347", [], [], null); // TODO: change
   }
 
   hasPoW(): boolean {

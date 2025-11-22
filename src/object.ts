@@ -22,31 +22,33 @@ class ObjectManager {
   /* TODO */
 
   id(obj: any) {
-    /* TODO */
+    return hash(canonicalize(obj))
   }
-
-  /**
-   * Checks if you know about this object
-   * @param objectid 
-   */
   async exists(objectid: ObjectId) {
-    /* TODO */
+    return await db.exists(`object:${objectid}`)
   }
-
   async get(objectid: ObjectId) {
-    /* TODO */
+    return await db.get(`object:${objectid}`)
   }
-
   async del(objectid: ObjectId) {
-    /* TODO */
+    return await db.del(`object:${objectid}`)
   }
-
   async put(object: any) {
-    /* TODO */
+    const objectid = this.id(object)
+
+    logger.debug(`Storing object with id ${objectid}: %o`, object)
+
+    return await db.put(`object:${this.id(object)}`, object)
   }
 
   async validate(object: ObjectType, peer: Peer) {
-    /* TODO */
+    await Object.match(
+        async (obj: TransactionObjectType) => {
+          const tx: Transaction = Transaction.fromNetworkObject(obj)
+          logger.debug(`Validating transaction: ${tx.txid}`)
+          await tx.validate()
+        }
+    )(object)
   }
 
   /**

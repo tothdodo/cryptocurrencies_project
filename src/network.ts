@@ -41,7 +41,11 @@ class Network {
   broadcast(obj: object) {
     logger.info(`Broadcasting object to all peers: %o`, obj)
 
-    /* TODO */
+    for (const peer of this.peers) {
+      if (peer.active) {
+        peer.sendMessage(obj) // intentionally delayed
+      }
+    }
   }
 }
 
@@ -49,7 +53,6 @@ export class MessageSocket extends EventEmitter {
   buffer: string = '' // defragmentation buffer
   netSocket: net.Socket
   peerAddr: string
-  /* TODO */
 
   static createClient(peerAddr: string) {
     const [host, portStr] = peerAddr.split(':')

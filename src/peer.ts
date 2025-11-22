@@ -24,11 +24,11 @@ import { ObjectId } from './object'
 import { chainManager } from './chain'
 import { mempool } from './mempool'
 
-const VERSION = '0.10.1'
-const NAME = 'Typescript skeleton for task 2' /* TODO */
+import { INVALID_FORMAT, INVALID_HANDSHAKE, UNKNOWN_OBJECT } from "./message";
+import { CustomError } from "./errors";
 
-const INVALID_FORMAT = 'INVALID_FORMAT'
-const INVALID_HANDSHAKE = 'INVALID_HANDSHAKE'
+const VERSION = '0.10.2'
+const NAME = 'Typescript skeleton for task 3' /* TODO */
 
 // Number of peers that each peer is allowed to report to us
 const MAX_PEERS_PER_PEER = 30
@@ -70,13 +70,22 @@ export class Peer {
     })
   }
   async sendIHaveObject(obj: any) {
-    /* TODO */
+    this.sendMessage({
+      type: 'ihaveobject',
+      objectid: objectManager.id(obj)
+    })
   }
   async sendObject(obj: any) {
-    /* TODO */
+    this.sendMessage({
+      type: 'object',
+      object: obj
+    })
   }
   async sendGetObject(objid: ObjectId) {
-    /* TODO */
+    this.sendMessage({
+      type: 'getobject',
+      objectid: objid
+    })
   }
   async sendGetChainTip() {
     /* TODO */
@@ -146,7 +155,7 @@ export class Peer {
     {
       if(typeof msg.type === 'string')
       {
-        if(['ihaveobject', 'getobject', 'object', 'getchaintip', 'chaintip', 'getmempool', 'mempool'].includes(msg.type))
+        if(['getchaintip', 'chaintip', 'getmempool', 'mempool'].includes(msg.type))
           return
       }
     }
@@ -170,10 +179,10 @@ export class Peer {
         },
         this.onMessageGetPeers.bind(this),
         this.onMessagePeers.bind(this),
-        /*this.onMessageIHaveObject.bind(this),
+        this.onMessageIHaveObject.bind(this),
         this.onMessageGetObject.bind(this),
         this.onMessageObject.bind(this),
-        this.onMessageGetChainTip.bind(this),
+        /*this.onMessageGetChainTip.bind(this),
         this.onMessageChainTip.bind(this),
         this.onMessageGetMempool.bind(this),
         this.onMessageMempool.bind(this),*/
@@ -223,13 +232,65 @@ export class Peer {
     await this.sendPeers()
   }
   async onMessageIHaveObject(msg: IHaveObjectMessageType) {
-    /* TODO */
+    this.info(`Peer claims knowledge of: ${msg.objectid}`)
+
+    if (!await db.exists(msg.objectid)) {
+      this.info(`Object ${msg.objectid} discovered`)
+      await this.sendGetObject(msg.objectid)
+    }
   }
   async onMessageGetObject(msg: GetObjectMessageType) {
-    /* TODO */
+    this.info(`Peer requested object with id: ${msg.objectid}`)
+
+    let obj
+    try {
+      obj = await objectManager.get(msg.objectid)
+    }
+    catch (e) {
+      this.warn(`We don't have the requested object with id: ${msg.objectid}`)
+      this.sendError(`Unknown object with id ${msg.objectid}`, UNKNOWN_OBJECT)
+      return
+    }
+    await this.sendObject(obj)
   }
   async onMessageObject(msg: ObjectMessageType) {
-    /* TODO */
+    const objectid: ObjectId = objectManager.id(msg.object)
+    let known: boolean = false
+
+    this.info(`Received object with id ${objectid}: %o`, msg.object)
+
+    known = await objectManager.exists(objectid)
+
+    if (known) {
+      this.debug(`Object with id ${objectid} is already known`)
+    }
+    this.info(`Received new object with id ${objectid} downloaded: %o`, msg.object)
+
+    try {
+      await objectManager.validate(msg.object, this)
+    }
+    catch (e: any) { // typescript does not allow strongly type try catch blocks....
+      if (e instanceof CustomError)
+      {
+        if(e.isNonFatal)
+          this.sendError(`Received invalid object: ${e.message}`, e.getErrorName())
+        else
+          this.fatalError(`Received invalid object: ${e.message}`, e.getErrorName())
+      }
+      else
+        this.fatalError(`Received invalid object: ${e.message}`, INVALID_FORMAT)
+      return
+    }
+
+    await objectManager.put(msg.object)
+
+    if (!known) {
+      // gossip
+      network.broadcast({
+        type: 'ihaveobject',
+        objectid
+      })
+    }
   }
   async onMessageGetChainTip(msg: GetChainTipMessageType) {
     /* TODO */
