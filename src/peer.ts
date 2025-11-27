@@ -1,21 +1,25 @@
 import { logger } from './logger'
 import { MessageSocket } from './network'
-import { Messages,
-         Message,
-         HelloMessage,
-         PeersMessage, GetPeersMessage,
-         IHaveObjectMessage, GetObjectMessage, ObjectMessage,
-         GetChainTipMessage, ChainTipMessage,
-         ErrorMessage,
-         MessageType,
-         HelloMessageType,
-         PeersMessageType, GetPeersMessageType,
-         IHaveObjectMessageType, GetObjectMessageType, ObjectMessageType,
-         GetChainTipMessageType, ChainTipMessageType,
-         ErrorMessageType,
-         GetMempoolMessageType,
-         MempoolMessageType
-        } from './message'
+import {
+  Messages,
+  Message,
+  HelloMessage,
+  PeersMessage, GetPeersMessage,
+  IHaveObjectMessage, GetObjectMessage, ObjectMessage,
+  GetChainTipMessage, ChainTipMessage,
+  ErrorMessage,
+  MessageType,
+  HelloMessageType,
+  PeersMessageType, GetPeersMessageType,
+  IHaveObjectMessageType, GetObjectMessageType, ObjectMessageType,
+  GetChainTipMessageType, ChainTipMessageType,
+  ErrorMessageType,
+  GetMempoolMessageType,
+  MempoolMessageType,
+  UNFINDABLE_OBJECT,
+  BlockObjectType,
+  ObjectType
+} from './message'
 import { peerManager } from './peermanager'
 import { canonicalize } from 'json-canonicalize'
 import { db, objectManager } from './object'
@@ -26,6 +30,7 @@ import { mempool } from './mempool'
 
 import { INVALID_FORMAT, INVALID_HANDSHAKE, UNKNOWN_OBJECT } from "./message";
 import { CustomError } from "./errors";
+import { Block } from './block'
 
 const VERSION = '0.10.2'
 const NAME = 'Typescript skeleton for task 3' /* TODO */
@@ -33,11 +38,11 @@ const NAME = 'Typescript skeleton for task 3' /* TODO */
 // Number of peers that each peer is allowed to report to us
 const MAX_PEERS_PER_PEER = 30
 
-function shuffleArray(array: Array<String>) : Array<String> {
+function shuffleArray(array: Array<String>): Array<String> {
   let len = array.length,
-      currentIndex;
+    currentIndex;
   for (currentIndex = len - 1; currentIndex > 0; currentIndex--) {
-    let randIndex = Math.floor(Math.random() * (currentIndex + 1) );
+    let randIndex = Math.floor(Math.random() * (currentIndex + 1));
     var temp = array[currentIndex];
     array[currentIndex] = array[randIndex];
     array[randIndex] = temp;
@@ -50,6 +55,11 @@ export class Peer {
   socket: MessageSocket
   handshakeCompleted: boolean = false
   peerAddr: string
+
+  private pendingBlocks = new Map<string, {
+    block: ObjectType,
+    missingTXIDs: Set<string>
+  }>();
 
   async sendHello() {
     this.sendMessage({
@@ -128,7 +138,7 @@ export class Peer {
     setTimeout(() => {
       if (!this.handshakeCompleted) {
         logger.info(
-            `Peer ${this.peerAddr} failed to handshake within time limit.`
+          `Peer ${this.peerAddr} failed to handshake within time limit.`
         )
         this.fatalError('No handshake within time limit.', INVALID_HANDSHAKE)
       }
@@ -151,11 +161,9 @@ export class Peer {
     }
     // for now, ignore messages that have a valid type but that we don't yet know how to parse
     // TODO: remove
-    if('type' in msg)
-    {
-      if(typeof msg.type === 'string')
-      {
-        if(['getchaintip', 'chaintip', 'getmempool', 'mempool'].includes(msg.type))
+    if ('type' in msg) {
+      if (typeof msg.type === 'string') {
+        if (['getchaintip', 'chaintip', 'getmempool', 'mempool'].includes(msg.type))
           return
       }
     }
@@ -163,7 +171,7 @@ export class Peer {
     if (!Message.guard(msg)) {
       const validation = Message.validate(msg)
       return await this.fatalError(
-          `The received message does not match one of the known message formats: ${message}
+        `The received message does not match one of the known message formats: ${message}
          Validation error: ${JSON.stringify(validation)}`, INVALID_FORMAT
       )
     }
@@ -174,19 +182,19 @@ export class Peer {
       return await this.fatalError(`Received message ${message} prior to "hello"`, INVALID_HANDSHAKE)
     }
     Message.match(
-        async () => {
-          return await this.fatalError(`Received a second "hello" message, even though handshake is completed`, INVALID_HANDSHAKE)
-        },
-        this.onMessageGetPeers.bind(this),
-        this.onMessagePeers.bind(this),
-        this.onMessageIHaveObject.bind(this),
-        this.onMessageGetObject.bind(this),
-        this.onMessageObject.bind(this),
-        /*this.onMessageGetChainTip.bind(this),
-        this.onMessageChainTip.bind(this),
-        this.onMessageGetMempool.bind(this),
-        this.onMessageMempool.bind(this),*/
-        this.onMessageError.bind(this)
+      async () => {
+        return await this.fatalError(`Received a second "hello" message, even though handshake is completed`, INVALID_HANDSHAKE)
+      },
+      this.onMessageGetPeers.bind(this),
+      this.onMessagePeers.bind(this),
+      this.onMessageIHaveObject.bind(this),
+      this.onMessageGetObject.bind(this),
+      this.onMessageObject.bind(this),
+      /*this.onMessageGetChainTip.bind(this),
+      this.onMessageChainTip.bind(this),
+      this.onMessageGetMempool.bind(this),
+      this.onMessageMempool.bind(this),*/
+      this.onMessageError.bind(this)
     )(msg)
   }
 
@@ -199,7 +207,7 @@ export class Peer {
     this.handshakeCompleted = true
   }
   async onMessagePeers(msg: PeersMessageType) {
-    if(msg.peers.length > 30)
+    if (msg.peers.length > 30)
       return await this.fatalError(`Send too many peers`, INVALID_FORMAT)
 
     for (const peer of msg.peers) {
@@ -253,45 +261,141 @@ export class Peer {
     }
     await this.sendObject(obj)
   }
+
   async onMessageObject(msg: ObjectMessageType) {
-    const objectid: ObjectId = objectManager.id(msg.object)
-    let known: boolean = false
+    const objectid: ObjectId = objectManager.id(msg.object);
 
-    this.info(`Received object with id ${objectid}: %o`, msg.object)
+    this.info(`Received object with id ${objectid}: %o`, msg.object);
 
-    known = await objectManager.exists(objectid)
-
+    const known = await objectManager.exists(objectid);
     if (known) {
-      this.debug(`Object with id ${objectid} is already known`)
+      this.debug(`Object with id ${objectid} is already known`);
+      return;
     }
-    this.info(`Received new object with id ${objectid} downloaded: %o`, msg.object)
 
+    this.info(`Received new object with id ${objectid} downloaded: %o`, msg.object);
+
+    // STEP 1: Try validating the object
+    const shouldStore = await this.tryValidateNewObject(msg, objectid);
+    if (!shouldStore) return;
+
+    // STEP 2: Store the object
+    await objectManager.put(msg.object);
+
+    // STEP 3: If it's a transaction, maybe it unblocks pending blocks
+    if (msg.object.type === "transaction") {
+      await this.processArrivedTransaction(objectid);
+    }
+
+    // STEP 4: Broadcast new object
+    network.broadcast({
+      type: "ihaveobject",
+      objectid
+    });
+  }
+
+  private async tryValidateNewObject(msg: ObjectMessageType, objectid: string): Promise<boolean> {
     try {
-      await objectManager.validate(msg.object, this)
-    }
-    catch (e: any) { // typescript does not allow strongly type try catch blocks....
-      if (e instanceof CustomError)
-      {
-        if(e.isNonFatal)
-          this.sendError(`Received invalid object: ${e.message}`, e.getErrorName())
-        else
-          this.fatalError(`Received invalid object: ${e.message}`, e.getErrorName())
+      await objectManager.validate(msg.object, this);
+      return true; // store it
+    } catch (e: any) {
+
+      if (!(e instanceof CustomError)) {
+        this.fatalError(`Received invalid object: ${e.message}`, INVALID_FORMAT);
+        return false;
       }
-      else
-        this.fatalError(`Received invalid object: ${e.message}`, INVALID_FORMAT)
-      return
-    }
 
-    await objectManager.put(msg.object)
+      if (e.name === UNFINDABLE_OBJECT) {
+        this.sendError(e.message, e.getErrorName());
 
-    if (!known) {
-      // gossip
-      network.broadcast({
-        type: 'ihaveobject',
-        objectid
-      })
+        const missingIds = e.getMissingTXIDs();
+        this.debug(`Requested missing referenced object(s): %o`, missingIds);
+
+        for (const id of missingIds) {
+          this.sendGetObject(id);
+        }
+
+        this.pendingBlocks.set(objectid, {
+          block: msg.object,
+          missingTXIDs: missingIds
+        });
+
+        return false; // not stored now
+      }
+
+      if (e.isNonFatal) {
+        this.sendError(`Received invalid object: ${e.message}`, e.getErrorName());
+      } else {
+        this.fatalError(`Received invalid object: ${e.message}`, e.getErrorName());
+      }
+
+      return false;
     }
   }
+
+  private async processArrivedTransaction(txId: string) {
+    for (const [blockId, pending] of this.pendingBlocks.entries()) {
+
+      if (!pending.missingTXIDs.has(txId)) continue;
+
+      pending.missingTXIDs.delete(txId);
+
+      // Still waiting for more TXs → nothing to do
+      if (pending.missingTXIDs.size > 0) continue;
+
+      this.debug(`All TXs received for block ${blockId}, resuming validation`);
+
+      await this.resumePendingBlockValidation(blockId, pending);
+    }
+  }
+
+  private async resumePendingBlockValidation(blockId: string, pending: {
+    block: ObjectType,
+    missingTXIDs: Set<string>
+  }) {
+    try {
+      await objectManager.validate(pending.block, this);
+
+      // Valid — store block + broadcast
+      await objectManager.put(pending.block);
+      this.pendingBlocks.delete(blockId);
+
+      network.broadcast({
+        type: "ihaveobject",
+        objectid: blockId
+      });
+
+    } catch (e: any) {
+
+      if (!(e instanceof CustomError)) {
+        this.fatalError(`Invalid block ${blockId}: ${e.message}`, INVALID_FORMAT);
+        this.pendingBlocks.delete(blockId);
+        return;
+      }
+
+      if (e.name === UNFINDABLE_OBJECT) {
+        const newMissing = e.getMissingTXIDs();
+
+        this.debug(`Block ${blockId} still missing TXs: %o`, newMissing);
+
+        pending.missingTXIDs = newMissing;
+
+        for (const id of newMissing) {
+          this.sendGetObject(id);
+        }
+
+        return;
+      }
+
+      if (e.isNonFatal)
+        this.sendError(`Invalid block ${blockId}: ${e.message}`, e.getErrorName());
+      else
+        this.fatalError(`Invalid block ${blockId}: ${e.message}`, e.getErrorName());
+
+      this.pendingBlocks.delete(blockId); // block cannot be validated
+    }
+  }
+  
   async onMessageGetChainTip(msg: GetChainTipMessageType) {
     /* TODO */
   }
@@ -309,9 +413,9 @@ export class Peer {
   }
   log(level: string, message: string, ...args: any[]) {
     logger.log(
-        level,
-        `[peer ${this.socket.peerAddr}:${this.socket.netSocket.remotePort}] ${message}`,
-        ...args
+      level,
+      `[peer ${this.socket.peerAddr}:${this.socket.netSocket.remotePort}] ${message}`,
+      ...args
     )
   }
   warn(message: string, ...args: any[]) {
@@ -323,6 +427,11 @@ export class Peer {
   debug(message: string, ...args: any[]) {
     this.log('debug', message, ...args)
   }
+
+  private sleep(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
   constructor(socket: MessageSocket, peerAddr: string) {
     this.socket = socket
     this.peerAddr = peerAddr

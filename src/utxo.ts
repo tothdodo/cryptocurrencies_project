@@ -9,14 +9,16 @@ export type UTXO = Set<string>
 /**
  * a class to represent the UTXO (unspent transaction output) set
  */
+
 export class UTXOSet {
-  /* TODO */
+  set: UTXO
 
   constructor(outpoints: UTXO) {
-    /* TODO */
+    this.set = new Set(outpoints)
   }
-  copy() {
-    /* TODO */
+
+  copy(): UTXOSet {
+    return new UTXOSet(new Set(this.set))
   }
 
   /**
@@ -25,7 +27,26 @@ export class UTXOSet {
    * @throws Error
    */
   async apply(tx: Transaction) {
-    /* TODO */
+    // --- 1. CHECK INPUTS EXIST ---
+    for (const input of tx.inputs) {
+      const key = `${input.outpoint.txid}:${input.outpoint.index}`
+
+      if (!this.set.has(key)) {
+        throw new Error(`UTXO error: missing input ${key}`)
+      }
+    }
+
+    // --- 2. REMOVE SPENT OUTPUTS ---
+    for (const input of tx.inputs) {
+      const key = `${input.outpoint.txid}:${input.outpoint.index}`
+      this.set.delete(key)
+    }
+
+    // --- 3. ADD NEW OUTPUTS ---
+    tx.outputs.forEach((_, index) => {
+      const key = `${tx.txid}:${index}`
+      this.set.add(key)
+    })
   }
 
   /**
@@ -33,10 +54,12 @@ export class UTXOSet {
    * @throws Error
    */
   async applyMultiple(txs: Transaction[]) {
-    /* TODO */
+    for (const tx of txs) {
+      await this.apply(tx)
+    }
   }
-  
+
   toString() {
-    /* TODO */
+    return `UTXOSet(${Array.from(this.set).join(', ')})`
   }
 }

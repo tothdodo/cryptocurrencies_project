@@ -126,7 +126,7 @@ export const IHaveObjectMessage = Record({
 })
 export type IHaveObjectMessageType = Static<typeof IHaveObjectMessage>
 
-export const Object = Union(TransactionObject) //Union(TransactionObject, BlockObject) // TODO: re-add block
+export const Object = Union(TransactionObject, BlockObject)
 export type ObjectType = Static<typeof Object>
 
 export const ObjectMessage = Record({
