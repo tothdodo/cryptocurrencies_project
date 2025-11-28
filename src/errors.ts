@@ -8,7 +8,6 @@ export class CustomError extends Error {
     constructor(msg: string, name: ErrorNameType, isNonFatal: boolean = false, missingTXIDs: Set<string> = new Set()) {
         super(msg);
 
-        // Set the prototype explicitly.
         Object.setPrototypeOf(this, CustomError.prototype);
 
         this.name = name

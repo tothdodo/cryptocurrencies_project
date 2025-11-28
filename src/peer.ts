@@ -395,7 +395,7 @@ export class Peer {
       this.pendingBlocks.delete(blockId); // block cannot be validated
     }
   }
-  
+
   async onMessageGetChainTip(msg: GetChainTipMessageType) {
     /* TODO */
   }

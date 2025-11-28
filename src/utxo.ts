@@ -1,6 +1,7 @@
 import { Block } from './block'
+import { CustomError } from './errors'
 import { logger } from './logger'
-import { OutpointObject, OutpointObjectType } from './message'
+import { INVALID_TX_CONSERVATION, OutpointObject, OutpointObjectType } from './message'
 import { db, ObjectId } from './object'
 import { Outpoint, Transaction } from './transaction'
 
@@ -32,7 +33,10 @@ export class UTXOSet {
       const key = `${input.outpoint.txid}:${input.outpoint.index}`
 
       if (!this.set.has(key)) {
-        throw new Error(`UTXO error: missing input ${key}`)
+        throw new CustomError(
+          `Transaction ${tx.txid} tries to spend missing UTXO ${key}`,
+          INVALID_TX_CONSERVATION
+        );
       }
     }
 
