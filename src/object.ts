@@ -41,7 +41,7 @@ class ObjectManager {
     return await db.put(`object:${this.id(object)}`, object)
   }
 
-  async validate(object: ObjectType, peer: Peer, startValidationFromTXId: string = ""): Promise<void> {
+  async validate(object: ObjectType, peer: Peer): Promise<void> {
     await Object.match(
         async (obj: TransactionObjectType) => {
           const tx: Transaction = Transaction.fromNetworkObject(obj)
@@ -51,7 +51,7 @@ class ObjectManager {
         async (obj: BlockObjectType) => {
           const block: Block = Block.fromNetworkObject(obj)
           logger.debug(`Validating block: ${block.blockid}`)
-          await block.validate(startValidationFromTXId)
+          await block.validate()
         }
     )(object)
   }

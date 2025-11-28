@@ -3,7 +3,9 @@ import {
   TransactionObject, ObjectType,
   UNFINDABLE_OBJECT,
   INVALID_FORMAT,
-  INVALID_BLOCK_POW
+  INVALID_BLOCK_POW,
+  INVALID_BLOCK_COINBASE,
+  INVALID_TX_CONSERVATION
 } from './message'
 import { hash } from './crypto/hash'
 import { canonicalize } from 'json-canonicalize'
@@ -38,7 +40,6 @@ const Hex32 = String.withConstraint(
 );
 type Hex32Type = Static<typeof Hex32>
 
-// ASCII-printable string up to 128 chars
 const AsciiPrintable128 = String.withConstraint(
   (str) =>
     /^[\x20-\x7E]{0,128}$/.test(str) ||
@@ -91,6 +92,8 @@ export class Block {
 
   utxo: UTXOSet;
 
+  txs: Transaction[] = [];
+
   /**
    * Builds a Block object from GENESIS
    * @returns the genesis block
@@ -128,8 +131,13 @@ export class Block {
    * @throws Error
    */
   async getCoinbase(): Promise<Transaction> {
-    /* TODO */
-    return new Transaction("d46d09138f0251edc32e28f1a744cb0b7286850e4c9c777d7e3c6e459b289347", [], [], null); // TODO: change
+    const tx = this.txs[0];
+    if (!tx.isCoinbase()) {
+      throw new CustomError(`Block ${this.blockid} is missing a valid coinbase transaction`, INVALID_BLOCK_COINBASE);
+    } else if (this.txs.some(tx => tx.isCoinbase() && tx.txid !== tx.txid)) {
+      throw new CustomError(`Block ${this.blockid} has multiple coinbase transactions`, INVALID_BLOCK_COINBASE);
+    }
+    return tx;
   }
 
   hasPoW(): boolean {
@@ -168,7 +176,7 @@ export class Block {
         missingTXIDs
       );
     }
-
+    this.txs = txs;
     return txs;
   }
 
@@ -178,7 +186,7 @@ export class Block {
    */
   async validateTx(tx: Transaction, index: number) {
     try {
-      await tx.validate();
+      await tx.validate(index, this);
     } catch (e) {
       throw e;
     }
@@ -213,56 +221,90 @@ export class Block {
    * Validate this block, throwing an error if validation failed
    * @throws Error
    */
-  async validate(startValidationFromTXIdx: string = "") {
-    if (startValidationFromTXIdx === "") {
-      // Validate fields
-      if (
-        !this ||
-        !("blockid" in this) ||
-        !("T" in this) ||
-        !("created" in this) ||
-        !("nonce" in this) ||
-        !("previd" in this) ||
-        !("txids" in this) ||
-        !("note" in this) ||
-        !("miner" in this) ||
-        !Hex32.check(this.T) ||
-        typeof this.created !== "number" ||
-        !AsciiPrintable128.check(this.miner) ||
-        !AsciiPrintable128.check(this.note) ||
-        !Hex32.check(this.nonce) ||
-        (this.previd !== null && !Hex32.check(this.previd)) ||
-        !Array.isArray(this.txids) ||
-        this.txids.some((id: any) => !Hex32.check(id))
-      ) {
-        throw new CustomError(`Invalid block fields: ${this.T}`, INVALID_FORMAT);
-      }
-
-      // Validate target
-      if (this.T !== "0000abc000000000000000000000000000000000000000000000000000000000") {
-        throw new CustomError(`Invalid block target: ${this.T}`, INVALID_FORMAT);
-      }
-
-      // Validate proof-of-work
-      if (!this.hasPoW()) {
-        throw new CustomError(`Block ${this.blockid} does not satisfy proof-of-work requirement`, INVALID_BLOCK_POW);
-      }
+  async validate() {
+    if (
+      !this ||
+      !("blockid" in this) ||
+      !("T" in this) ||
+      !("created" in this) ||
+      !("nonce" in this) ||
+      !("previd" in this) ||
+      !("txids" in this) ||
+      !("note" in this) ||
+      !("miner" in this) ||
+      !Hex32.check(this.T) ||
+      typeof this.created !== "number" ||
+      !AsciiPrintable128.check(this.miner) ||
+      !AsciiPrintable128.check(this.note) ||
+      !Hex32.check(this.nonce) ||
+      (this.previd !== null && !Hex32.check(this.previd)) ||
+      !Array.isArray(this.txids) ||
+      this.txids.some((id: any) => !Hex32.check(id))
+    ) {
+      throw new CustomError(`Invalid block fields: ${this.T}`, INVALID_FORMAT);
     }
 
-    let txs: Transaction[];
-    try {
-      txs = await this.getTxs();
-    } catch (e) {
-      throw e;
+    if (this.T !== "0000abc000000000000000000000000000000000000000000000000000000000") {
+      throw new CustomError(`Invalid block target: ${this.T}`, INVALID_FORMAT);
+    }
+
+    if (!this.hasPoW()) {
+      throw new CustomError(`Block ${this.blockid} does not satisfy proof-of-work requirement`, INVALID_BLOCK_POW);
     }
 
     try {
-      txs.forEach(async (tx, index) => {
-        await this.validateTx(tx, index);
-      });
+      const txs = await this.getTxs();
+
+      for (let i = 0; i < txs.length; i++) {
+        await this.validateTx(txs[i], i);
+      }
+
+      const coinbase = await this.getCoinbase();
+      const totalFees = this.txs.filter(tx => !tx.isCoinbase()).reduce((sum, tx) => sum + (tx.fees ?? 0), 0);
+      const coinbaseOutputValue = coinbase.outputs[0].value;
+
+      const maxPayout = BLOCK_REWARD + totalFees;
+
+      if (coinbaseOutputValue > maxPayout) {
+        throw new CustomError(
+          `Invalid coinbase transaction ${coinbase.txid}. Coinbase output ${coinbaseOutputValue} exceeds maximum allowed ${maxPayout}.`,
+          INVALID_TX_CONSERVATION
+        );
+      }
+
+      await this.computeUTXOSet();
     } catch (e) {
       throw e;
     }
+  }
+
+  async computeUTXOSet(): Promise<UTXOSet> {
+    let parentUTXO: UTXOSet;
+
+    if (this.previd === null) {
+      parentUTXO = new UTXOSet(new Set());
+    } else {
+      const parentBlock = await this.loadParent();
+
+      if (parentBlock === null || parentBlock.utxo === null) {
+        throw new CustomError(
+          `Cannot compute UTXO: parent block ${this.previd} has no UTXO set`,
+          INVALID_FORMAT
+        );
+      }
+
+      parentUTXO = parentBlock.utxo.copy();
+    }
+
+    const utxos = parentUTXO.copy();
+
+    try {
+      await utxos.applyMultiple(this.txs);
+    } catch (e) {
+      throw e;
+    }
+    this.utxo = utxos;
+    return utxos;
   }
 
   /**
