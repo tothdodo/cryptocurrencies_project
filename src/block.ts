@@ -200,7 +200,7 @@ export class Block {
     const parentId = this.previd;
     if (parentId !== null) {
       try {
-        return await objectManager.get(parentId);
+        return await this.load(parentId);
       } catch (e) {
         return null;
       }
@@ -273,6 +273,7 @@ export class Block {
       }
 
       await this.computeUTXOSet();
+      await this.save();
     } catch (e) {
       throw e;
     }
