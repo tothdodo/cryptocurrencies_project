@@ -278,7 +278,7 @@ export class Block {
     }
   }
 
-  async computeUTXOSet(): Promise<UTXOSet> {
+  async computeUTXOSet(): Promise<void> {
     let parentUTXO: UTXOSet;
 
     if (this.previd === null) {
@@ -304,7 +304,6 @@ export class Block {
       throw e;
     }
     this.utxo = utxos;
-    return utxos;
   }
 
   /**

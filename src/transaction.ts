@@ -194,7 +194,12 @@ export class Transaction {
     let blockCoinbase: Transaction | undefined
 
     if (block !== undefined) {
-      blockCoinbase = await block.getCoinbase();
+      try {
+        blockCoinbase = await block.getCoinbase();
+      }
+      catch (e) {
+        throw e;
+      }
     }
 
     const inputValues = await Promise.all(
