@@ -312,7 +312,10 @@ export class Peer {
         this.debug(`Requested missing referenced object(s): %o`, missingIds);
 
         for (const id of missingIds) {
-          this.sendGetObject(id);
+          network.broadcast({
+            type: "getobject",
+            objectid: id
+          });
         }
 
         this.pendingBlocks.set(objectid, {
@@ -320,13 +323,12 @@ export class Peer {
           missingTXIDs: missingIds
         });
 
-        return false; // not stored now
-      }
-
-      if (e.isNonFatal) {
-        this.sendError(`Received invalid object: ${e.message}`, e.getErrorName());
       } else {
-        this.fatalError(`Received invalid object: ${e.message}`, e.getErrorName());
+        if (e.isNonFatal) {
+          this.sendError(`Received invalid object: ${e.message}`, e.getErrorName());
+        } else {
+          this.fatalError(`Received invalid object: ${e.message}`, e.getErrorName());
+        }
       }
 
       return false;
@@ -426,10 +428,6 @@ export class Peer {
   }
   debug(message: string, ...args: any[]) {
     this.log('debug', message, ...args)
-  }
-
-  private sleep(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   constructor(socket: MessageSocket, peerAddr: string) {

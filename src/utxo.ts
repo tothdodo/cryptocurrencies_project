@@ -1,7 +1,7 @@
 import { Block } from './block'
 import { CustomError } from './errors'
 import { logger } from './logger'
-import { INVALID_TX_CONSERVATION, OutpointObject, OutpointObjectType } from './message'
+import { INVALID_TX_CONSERVATION, INVALID_TX_OUTPOINT, OutpointObject, OutpointObjectType } from './message'
 import { db, ObjectId } from './object'
 import { Outpoint, Transaction } from './transaction'
 
@@ -35,7 +35,7 @@ export class UTXOSet {
       if (!this.set.has(key)) {
         throw new CustomError(
           `Transaction ${tx.txid} tries to spend missing UTXO ${key}`,
-          INVALID_TX_CONSERVATION
+          INVALID_TX_OUTPOINT
         );
       }
     }
@@ -58,8 +58,12 @@ export class UTXOSet {
    * @throws Error
    */
   async applyMultiple(txs: Transaction[]) {
-    for (const tx of txs) {
-      await this.apply(tx)
+    try {
+      for (const tx of txs) {
+        await this.apply(tx)
+      }
+    } catch (e: any) {
+      throw e;
     }
   }
 

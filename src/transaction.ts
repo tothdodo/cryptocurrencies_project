@@ -1,5 +1,6 @@
 import { ObjectId, objectManager } from './object'
 import {
+  INVALID_BLOCK_COINBASE,
   INVALID_FORMAT,
   INVALID_TX_CONSERVATION,
   INVALID_TX_OUTPOINT,
@@ -186,6 +187,12 @@ export class Transaction {
             INVALID_FORMAT
           );
         }
+        if (this.height !== block.height) {
+          throw new CustomError(
+            `Invalid coinbase height in tx ${this.txid}. Height must match the block height ${block.height}.`,
+            INVALID_BLOCK_COINBASE
+          );
+        }
       }
       this.fees = 0
       return
@@ -206,7 +213,7 @@ export class Transaction {
       this.inputs.map(async (input, i) => {
         if (blockCoinbase !== undefined && input.outpoint.txid === blockCoinbase.txid) {
           throw new CustomError(
-            `Coinbase spent in the same block by tx ${this.txid}`, INVALID_TX_CONSERVATION
+            `Coinbase spent in the same block by tx ${this.txid}`, INVALID_TX_OUTPOINT
           );
         }
 

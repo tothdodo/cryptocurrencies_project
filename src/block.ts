@@ -5,7 +5,10 @@ import {
   INVALID_FORMAT,
   INVALID_BLOCK_POW,
   INVALID_BLOCK_COINBASE,
-  INVALID_TX_CONSERVATION
+  INVALID_TX_CONSERVATION,
+  INVALID_GENESIS,
+  UNKNOWN_OBJECT,
+  INVALID_BLOCK_TIMESTAMP
 } from './message'
 import { hash } from './crypto/hash'
 import { canonicalize } from 'json-canonicalize'
@@ -19,7 +22,7 @@ import { Deferred } from './promise'
 import { Static, String } from "runtypes";
 import { CustomError } from './errors'
 
-const TARGET = '0' /* TODO */
+const TARGET = "0000abc000000000000000000000000000000000000000000000000000000000"
 const GENESIS: BlockObjectType = {
   "T": "00000000abc00000000000000000000000000000000000000000000000000000",
   "created": 1671062400,
@@ -93,6 +96,7 @@ export class Block {
   utxo: UTXOSet;
 
   txs: Transaction[] = [];
+  height: number = 0;
 
   /**
    * Builds a Block object from GENESIS
@@ -133,7 +137,7 @@ export class Block {
   async getCoinbase(): Promise<Transaction> {
     const tx = this.txs[0];
     if (!tx.isCoinbase()) {
-      throw new CustomError(`Block ${this.blockid} is missing a valid coinbase transaction`, INVALID_BLOCK_COINBASE);
+      throw new CustomError(`Block ${this.blockid} has a coinbase transaction, but in not at idx 0`, INVALID_BLOCK_COINBASE);
     } else if (this.txs.some(tx => tx.isCoinbase() && tx.txid !== tx.txid)) {
       throw new CustomError(`Block ${this.blockid} has multiple coinbase transactions`, INVALID_BLOCK_COINBASE);
     }
@@ -196,16 +200,12 @@ export class Block {
    * Gets the parent block, returning null on failure
    * @returns Block
    */
-  async loadParent(): Promise<Block | null> {
-    const parentId = this.previd;
-    if (parentId !== null) {
-      try {
-        return await this.load(parentId);
-      } catch (e) {
-        return null;
-      }
+  async loadParent(): Promise<Block> {
+    try {
+      return await this.load(this.previd!);
+    } catch (e) {
+      throw e;
     }
-    return null;
   }
 
   /**
@@ -244,7 +244,7 @@ export class Block {
       throw new CustomError(`Invalid block fields: ${this.T}`, INVALID_FORMAT);
     }
 
-    if (this.T !== "0000abc000000000000000000000000000000000000000000000000000000000") {
+    if (this.T !== TARGET) {
       throw new CustomError(`Invalid block target: ${this.T}`, INVALID_FORMAT);
     }
 
@@ -252,59 +252,91 @@ export class Block {
       throw new CustomError(`Block ${this.blockid} does not satisfy proof-of-work requirement`, INVALID_BLOCK_POW);
     }
 
+    const genesis = await Block.makeGenesis();
+    if (this.isGenesis() && this.blockid !== genesis.blockid) {
+      throw new CustomError(`Invalid genesis block ID: ${this.blockid}`, INVALID_GENESIS);
+    } else if (this.isGenesis()) {
+      this.height = 0;
+      this.utxo = new UTXOSet(new Set<string>());
+      await this.save();
+      return;
+    }
+
     try {
       const txs = await this.getTxs();
+
+      let parentBlock: Block;
+      parentBlock = await this.loadParent();
+      // check timestamp that it is greater than the parent block and not in the future
+      if (parentBlock.created >= this.created || this.created > Date.now() / 1000 + 2 * 60 * 60) {
+        throw new CustomError(
+          `Invalid block timestamp ${this.created} in block ${this.blockid}`,
+          INVALID_BLOCK_TIMESTAMP
+        );
+      }
+      this.height = parentBlock.height + 1;
 
       for (let i = 0; i < txs.length; i++) {
         await this.validateTx(txs[i], i);
       }
 
-      const coinbase = await this.getCoinbase();
-      const totalFees = this.txs.filter(tx => !tx.isCoinbase()).reduce((sum, tx) => sum + (tx.fees ?? 0), 0);
-      const coinbaseOutputValue = coinbase.outputs[0].value;
+      const seenInputs = new Set<string>();
 
-      const maxPayout = BLOCK_REWARD + totalFees;
+      for (const tx of txs) {
+        for (const input of tx.inputs) {
+          const key = `${input.outpoint.txid}:${input.outpoint.index}`;
 
-      if (coinbaseOutputValue > maxPayout) {
-        throw new CustomError(
-          `Invalid coinbase transaction ${coinbase.txid}. Coinbase output ${coinbaseOutputValue} exceeds maximum allowed ${maxPayout}.`,
-          INVALID_TX_CONSERVATION
-        );
+          if (seenInputs.has(key)) {
+            throw new CustomError(`DOUBLE_SPEND_IN_BLOCK: output ${key} spent twice in the block`, INVALID_TX_CONSERVATION);
+          }
+          seenInputs.add(key);
+        }
       }
 
-      await this.computeUTXOSet();
+      const isThereCoinbase = txs.some(tx => tx.isCoinbase());
+      if (isThereCoinbase) {
+        const coinbase = await this.getCoinbase();
+        const totalFees = this.txs.filter(tx => !tx.isCoinbase()).reduce((sum, tx) => sum + (tx.fees ?? 0), 0);
+        const coinbaseOutputValue = coinbase.outputs[0].value;
+
+        if (coinbaseOutputValue > BLOCK_REWARD) {
+          throw new CustomError(
+            `Invalid coinbase transaction ${coinbase.txid}. Coinbase output ${coinbaseOutputValue} exceeds block reward ${BLOCK_REWARD}.`,
+            INVALID_BLOCK_COINBASE
+          );
+        }
+
+        const maxPayout = BLOCK_REWARD + totalFees;
+
+        if (coinbaseOutputValue > maxPayout) {
+          throw new CustomError(
+            `Invalid coinbase transaction ${coinbase.txid}. Coinbase output ${coinbaseOutputValue} exceeds maximum allowed ${maxPayout}.`,
+            INVALID_TX_CONSERVATION
+          );
+        }
+      }
+
+      await this.computeUTXOSet(parentBlock);
       await this.save();
     } catch (e) {
       throw e;
     }
   }
 
-  async computeUTXOSet(): Promise<void> {
-    let parentUTXO: UTXOSet;
-
-    if (this.previd === null) {
-      parentUTXO = new UTXOSet(new Set());
-    } else {
-      const parentBlock = await this.loadParent();
-
-      if (parentBlock === null || parentBlock.utxo === null) {
+  async computeUTXOSet(parentBlock: Block): Promise<void> {
+    try {
+      if (parentBlock.utxo === null) {
         throw new CustomError(
           `Cannot compute UTXO: parent block ${this.previd} has no UTXO set`,
           INVALID_FORMAT
         );
       }
-
-      parentUTXO = parentBlock.utxo.copy();
-    }
-
-    const utxos = parentUTXO.copy();
-
-    try {
+      const utxos = parentBlock.utxo.copy();
       await utxos.applyMultiple(this.txs);
+      this.utxo = utxos;
     } catch (e) {
       throw e;
     }
-    this.utxo = utxos;
   }
 
   /**
@@ -317,13 +349,15 @@ export class Block {
   /**
    * load this block data and meta information
    */
-  async load(blockid: string): Promise<Block | null> {
-    const data = await blockManager.get(blockid)
-    if (!data) return null
-
-    const utxo = new UTXOSet(new Set(data.utxo))
-    const block = Block.fromNetworkObject(data.block)
-    block.utxo = utxo
-    return block
+  async load(blockid: string): Promise<Block> {
+    try {
+      const data = await blockManager.get(blockid)
+      const utxo = new UTXOSet(new Set(data.utxo))
+      const block = Block.fromNetworkObject(data.block)
+      block.utxo = utxo
+      return block
+    } catch (e) {
+      throw new CustomError(`Block ${blockid} could not be found`, UNKNOWN_OBJECT);
+    }
   }
 }
