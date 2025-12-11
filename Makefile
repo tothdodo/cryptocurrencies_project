@@ -1,24 +1,24 @@
 .PHONY: docker-build docker-up run build clean make-submission check-submission remove-submission remove-test
 
 run:
-	npm run start
-
-build:
-	npm i
-	tsc
+	cd src && python3 main.py
 
 clean: remove-submission remove-test
-	rm -rf node_modules
 	# add further actions if needed
-	rm -rf db
-	rm -rf dist
+	rm -f src/db.db
+	rm -f src/peers.json
+	rm -rf src/__pycache__
+	rm -rf src/message/__pycache__
+
+build:
+	pip3 install --no-cache-dir -r src/requirements.txt
 
 # add own tests if you want
 run-tests:
 # Perform a simple connection check   
 #	nc -zv localhost 18018	
 	powershell -Command "Test-NetConnection -ComputerName localhost -Port 18018"
-
+ 
 
 # don't touch these targets 
 docker-build:
@@ -32,7 +32,7 @@ docker-down:
 
 submission:
 	mkdir -p _submission
-	tar --exclude='./.idea' --exclude='./.git' --exclude='./node_modules' --exclude='./_submission' --exclude='./_test' -czf _submission/submission.tgz .
+	tar --exclude='./.idea' --exclude='./_submission' --exclude='./_test' --exclude='./.git' -czf _submission/submission.tgz .
 	@echo Finished creating submission archive _submission/submission.tgz
 	@echo Run make check-submission now to check if our automated grader will be able to connect to it
 

@@ -1,0 +1,5 @@
+cffi==1.17.1
+cryptography==3.4.8
+jcs==0.2.1
+pycparser==2.22
+termcolor==3.2.0

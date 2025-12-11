@@ -1,0 +1,1 @@
+{"description": "Send invalid pow block as chaintip", "expected": "INVALID_BLOCK_POW", "objects": [["cmd", {"type": "chaintip", "blockid": "0001e402ab6db384b580b94c5ef8b352e2177b2b34b511d75c277646e3e877ec"}, ""]]}
