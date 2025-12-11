@@ -480,7 +480,6 @@ async def handle_object_msg(msg_dict, queue):
     obj_dict = msg_dict['object']
     objid = objects.get_objid(obj_dict)
     print(f"Received object with id {objid}: {obj_dict}")
-    print
 
     err_str = None
     con = sqlite3.connect(const.DB_NAME)

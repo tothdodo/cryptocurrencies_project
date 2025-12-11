@@ -1,1 +1,37 @@
-{"description": "Block with an invalid previd ptr", "expected": "INVALID_GENESIS", "objects": [{"object": {"height": 1, "outputs": [{"pubkey": "71685a3a274db53b0302036643674b04cc08ba8f9a5338a3754670e47b44445c", "value": 50000000000000}], "type": "transaction"}, "type": "object"}, [{"type": "object", "object": {"T": "0000abc000000000000000000000000000000000000000000000000000000000", "created": 1764146001, "miner": "test", "nonce": "b7c412abe973f79a537ac49ff6e05fe20310bdc971f9ef10cfaf6db286ca00a3", "note": "This block has an invalid previd ptr", "previd": null, "txids": ["67212216b67d4f6c69f056b542cb5147bcb519cd91763628bdcddca6be9855bf"], "type": "block"}}, false]]}
+{
+    "description": "Block with an invalid previd ptr",
+    "expected": "INVALID_GENESIS",
+    "objects": [
+        {
+            "object": {
+                "height": 1,
+                "outputs": [
+                    {
+                        "pubkey": "71685a3a274db53b0302036643674b04cc08ba8f9a5338a3754670e47b44445c",
+                        "value": 50000000000000
+                    }
+                ],
+                "type": "transaction"
+            },
+            "type": "object"
+        },
+        [
+            {
+                "type": "object",
+                "object": {
+                    "T": "0000abc000000000000000000000000000000000000000000000000000000000",
+                    "created": 1764146001,
+                    "miner": "test",
+                    "nonce": "b7c412abe973f79a537ac49ff6e05fe20310bdc971f9ef10cfaf6db286ca00a3",
+                    "note": "This block has an invalid previd ptr",
+                    "previd": null,
+                    "txids": [
+                        "67212216b67d4f6c69f056b542cb5147bcb519cd91763628bdcddca6be9855bf"
+                    ],
+                    "type": "block"
+                }
+            },
+            false
+        ]
+    ]
+}

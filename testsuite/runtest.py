@@ -30,7 +30,7 @@ def print_input(msg):
     if (colored):
         print (colored(msg, 'yellow'))
     else:
-        print (f"<= {msg}")
+        print (f"<= {msg}" )
 
 def print_info(msg):
     if (colored):
@@ -126,7 +126,7 @@ async def check_ignore_error(got_error, tcobj, errstr):
 
 async def run_test():
     try:
-        reader, writer = await asyncio.open_connection(hostname, "18018",
+        reader, writer = await asyncio.open_connection(hostname, 18018,
                                        limit=512*1024)
     except Exception as e:
         print_error(f"failed to connect to peer:  {str(e)}")
@@ -213,7 +213,7 @@ for arg in sys.argv[argidx:]:
             asyncio.run(run_test())
             passed += 1
         except Exception as e:
-            print_error (f"TEST FAILED: {e}")
+            print_error (f"PYTHON TEST FAILED: {e}")
 #            print(traceback.format_exc())
 #            raise (e)
             failed += 1

@@ -1,1 +1,91 @@
-{"description": "The Block references another block in txids", "expected": "INVALID_FORMAT", "objects": [{"object": {"height": 1, "outputs": [{"pubkey": "71685a3a274db53b0302036643674b04cc08ba8f9a5338a3754670e47b44445c", "value": 50000000000000}], "type": "transaction"}, "type": "object"}, {"object": {"height": 2, "outputs": [{"pubkey": "439dc889a8c92538a691fb1c4a20142c98c579519ff9a0984974cc07491877cf", "value": 50000000000000}], "type": "transaction"}, "type": "object"}, {"object": {"inputs": [{"outpoint": {"index": 0, "txid": "67212216b67d4f6c69f056b542cb5147bcb519cd91763628bdcddca6be9855bf"}, "sig": "4d8d513b8c53de4873bd4582907815f55c33cb4e51a7a7ae33835601465f99c5d829c180e2511ec00fdfbf6a57f847b5a611200fe5f176fbe6998328d3014901"}], "outputs": [{"pubkey": "e757dfa45c7c25045f71085c1bc60c84058801dbfec80c5195646ef7052ea94a", "value": 49999999999900}], "type": "transaction"}, "type": "object"}, [{"type": "object", "object": {"T": "0000abc000000000000000000000000000000000000000000000000000000000", "created": 1764146001, "miner": "test", "nonce": "73cb6f1bb133f691966d7a333114422136c8e015bbc29f201afc5d2d4c0eacb6", "note": "This block has a valid coinbase transaction", "previd": "00002fa163c7dab0991544424b9fd302bb1782b185e5a3bbdf12afb758e57dee", "txids": ["67212216b67d4f6c69f056b542cb5147bcb519cd91763628bdcddca6be9855bf"], "type": "block"}}, true], [{"type": "object", "object": {"T": "0000abc000000000000000000000000000000000000000000000000000000000", "created": 1764146002, "miner": "test", "nonce": "10e9201cb638d3a4e50a2bcc20d224a45953bfc15aba33ea6367b607a8b6ed49", "note": "The Block references another block in txids", "previd": "00004653b1cf56f1d0556ef1fe3135814c421da39f0baac0288c4006a8624a04", "txids": ["d5391c956a5fba5436304a5b73c78a5a8fd78cefed4eaa1b300a1b1a2f9f8a3c", "00004653b1cf56f1d0556ef1fe3135814c421da39f0baac0288c4006a8624a04", "f3114c150a6265d2949d39a66cb65322f6bbd274a44eb85cae744055280537b2"], "type": "block"}}, false]]}
+{
+    "description": "The Block references another block in txids",
+    "expected": "INVALID_FORMAT",
+    "objects": [
+        {
+            "object": {
+                "height": 1,
+                "outputs": [
+                    {
+                        "pubkey": "71685a3a274db53b0302036643674b04cc08ba8f9a5338a3754670e47b44445c",
+                        "value": 50000000000000
+                    }
+                ],
+                "type": "transaction"
+            },
+            "type": "object"
+        },
+        {
+            "object": {
+                "height": 2,
+                "outputs": [
+                    {
+                        "pubkey": "439dc889a8c92538a691fb1c4a20142c98c579519ff9a0984974cc07491877cf",
+                        "value": 50000000000000
+                    }
+                ],
+                "type": "transaction"
+            },
+            "type": "object"
+        },
+        {
+            "object": {
+                "inputs": [
+                    {
+                        "outpoint": {
+                            "index": 0,
+                            "txid": "67212216b67d4f6c69f056b542cb5147bcb519cd91763628bdcddca6be9855bf"
+                        },
+                        "sig": "4d8d513b8c53de4873bd4582907815f55c33cb4e51a7a7ae33835601465f99c5d829c180e2511ec00fdfbf6a57f847b5a611200fe5f176fbe6998328d3014901"
+                    }
+                ],
+                "outputs": [
+                    {
+                        "pubkey": "e757dfa45c7c25045f71085c1bc60c84058801dbfec80c5195646ef7052ea94a",
+                        "value": 49999999999900
+                    }
+                ],
+                "type": "transaction"
+            },
+            "type": "object"
+        },
+        [
+            {
+                "type": "object",
+                "object": {
+                    "T": "0000abc000000000000000000000000000000000000000000000000000000000",
+                    "created": 1764146001,
+                    "miner": "test",
+                    "nonce": "73cb6f1bb133f691966d7a333114422136c8e015bbc29f201afc5d2d4c0eacb6",
+                    "note": "This block has a valid coinbase transaction",
+                    "previd": "00002fa163c7dab0991544424b9fd302bb1782b185e5a3bbdf12afb758e57dee",
+                    "txids": [
+                        "67212216b67d4f6c69f056b542cb5147bcb519cd91763628bdcddca6be9855bf"
+                    ],
+                    "type": "block"
+                }
+            },
+            true
+        ],
+        [
+            {
+                "type": "object",
+                "object": {
+                    "T": "0000abc000000000000000000000000000000000000000000000000000000000",
+                    "created": 1764146002,
+                    "miner": "test",
+                    "nonce": "10e9201cb638d3a4e50a2bcc20d224a45953bfc15aba33ea6367b607a8b6ed49",
+                    "note": "The Block references another block in txids",
+                    "previd": "00004653b1cf56f1d0556ef1fe3135814c421da39f0baac0288c4006a8624a04",
+                    "txids": [
+                        "d5391c956a5fba5436304a5b73c78a5a8fd78cefed4eaa1b300a1b1a2f9f8a3c",
+                        "00004653b1cf56f1d0556ef1fe3135814c421da39f0baac0288c4006a8624a04",
+                        "f3114c150a6265d2949d39a66cb65322f6bbd274a44eb85cae744055280537b2"
+                    ],
+                    "type": "block"
+                }
+            },
+            false
+        ]
+    ]
+}

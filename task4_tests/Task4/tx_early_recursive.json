@@ -1,1 +1,109 @@
-{"description": "Block with early tx check, recursive (block in txids)", "expected": "INVALID_ANCESTRY", "objects": [{"object": {"height": 1, "outputs": [{"pubkey": "71685a3a274db53b0302036643674b04cc08ba8f9a5338a3754670e47b44445c", "value": 50000000000000}], "type": "transaction"}, "type": "object"}, {"object": {"inputs": [{"outpoint": {"index": 0, "txid": "67212216b67d4f6c69f056b542cb5147bcb519cd91763628bdcddca6be9855bf"}, "sig": "66d599c9f9b223fef34cb416601f98196d5c1febd360e4e772481c626c8cf4d28cb7321ef311316edeb5ac2b8d23686a62a7c7b663acf69909eaabd20964190c"}, {"outpoint": {"index": 1, "txid": "000d2a956862efbb621977bb9757e3ed5c95cb715fe0d79067fd301ea9dfb39c"}, "sig": "66d599c9f9b223fef34cb416601f98196d5c1febd360e4e772481c626c8cf4d28cb7321ef311316edeb5ac2b8d23686a62a7c7b663acf69909eaabd20964190c"}], "outputs": [{"pubkey": "439dc889a8c92538a691fb1c4a20142c98c579519ff9a0984974cc07491877cf", "value": 50000}], "type": "transaction"}, "type": "object"}, {"object": {"height": 3, "outputs": [{"pubkey": "71685a3a274db53b0302036643674b04cc08ba8f9a5338a3754670e47b44445c", "value": 50000000000000}], "type": "transaction"}, "type": "object"}, {"type": "object", "object": {"T": "0000abc000000000000000000000000000000000000000000000000000000000", "created": 1764146001, "miner": "test", "nonce": "7bc78539fd2834bde3927f7be62ab874aba95e89185e7f2aa0c598ce07c04680", "note": "Block with early tx check, recursive (block in txids)", "previd": "00002fa163c7dab0991544424b9fd302bb1782b185e5a3bbdf12afb758e57dee", "txids": ["67212216b67d4f6c69f056b542cb5147bcb519cd91763628bdcddca6be9855bf"], "type": "block"}}, {"type": "object", "object": {"T": "0000abc000000000000000000000000000000000000000000000000000000000", "created": 1764146002, "miner": "test", "nonce": "8b5e587764665a3f56f0bc3c52ff8cbdc059ccc7570daf354bc6580fca26a71f", "note": "Block with early tx check, recursive (block in txids)", "previd": "000087c09fca06ecff300ab743428556d16609d14531b887d15d0ba3aaed15ac", "txids": ["2840af44e1a3da9fe5a3ec2cb22fb3c085bb612c1e962c0defbc5cc46fa1b67e", "000087c09fca06ecff300ab743428556d16609d14531b887d15d0ba3aaed15ac"], "type": "block"}}, [{"type": "object", "object": {"T": "0000abc000000000000000000000000000000000000000000000000000000000", "created": 1764146003, "miner": "test", "nonce": "3ef86fd77302930183fda31fc395e5d74d3b0c2b24cd04ddc0ab5effe82713c6", "note": "Block with early tx check, recursive (block in txids)", "previd": "00002c9198bc1f7c0a23999865b92c0fb0bb0bd33a756a05ad2419e53404f2e9", "txids": ["f75d2a956862efbb621977bb9757e3ed5c95cb715fe0d79067fd301ea9dfb39c"], "type": "block"}}, false]]}
+{
+  "description": "Block with early tx check, recursive (block in txids)",
+  "expected": "INVALID_ANCESTRY",
+  "objects": [
+    {
+      "object": {
+        "height": 1,
+        "outputs": [
+          {
+            "pubkey": "71685a3a274db53b0302036643674b04cc08ba8f9a5338a3754670e47b44445c",
+            "value": 50000000000000
+          }
+        ],
+        "type": "transaction"
+      },
+      "type": "object"
+    },
+    {
+      "object": {
+        "inputs": [
+          {
+            "outpoint": {
+              "index": 0,
+              "txid": "67212216b67d4f6c69f056b542cb5147bcb519cd91763628bdcddca6be9855bf"
+            },
+            "sig": "66d599c9f9b223fef34cb416601f98196d5c1febd360e4e772481c626c8cf4d28cb7321ef311316edeb5ac2b8d23686a62a7c7b663acf69909eaabd20964190c"
+          },
+          {
+            "outpoint": {
+              "index": 1,
+              "txid": "000d2a956862efbb621977bb9757e3ed5c95cb715fe0d79067fd301ea9dfb39c"
+            },
+            "sig": "66d599c9f9b223fef34cb416601f98196d5c1febd360e4e772481c626c8cf4d28cb7321ef311316edeb5ac2b8d23686a62a7c7b663acf69909eaabd20964190c"
+          }
+        ],
+        "outputs": [
+          {
+            "pubkey": "439dc889a8c92538a691fb1c4a20142c98c579519ff9a0984974cc07491877cf",
+            "value": 50000
+          }
+        ],
+        "type": "transaction"
+      },
+      "type": "object"
+    },
+    {
+      "object": {
+        "height": 3,
+        "outputs": [
+          {
+            "pubkey": "71685a3a274db53b0302036643674b04cc08ba8f9a5338a3754670e47b44445c",
+            "value": 50000000000000
+          }
+        ],
+        "type": "transaction"
+      },
+      "type": "object"
+    },
+    {
+      "type": "object",
+      "object": {
+        "T": "0000abc000000000000000000000000000000000000000000000000000000000",
+        "created": 1764146001,
+        "miner": "test",
+        "nonce": "7bc78539fd2834bde3927f7be62ab874aba95e89185e7f2aa0c598ce07c04680",
+        "note": "Block with early tx check, recursive (block in txids)",
+        "previd": "00002fa163c7dab0991544424b9fd302bb1782b185e5a3bbdf12afb758e57dee",
+        "txids": [
+          "67212216b67d4f6c69f056b542cb5147bcb519cd91763628bdcddca6be9855bf"
+        ],
+        "type": "block"
+      }
+    },
+    {
+      "type": "object",
+      "object": {
+        "T": "0000abc000000000000000000000000000000000000000000000000000000000",
+        "created": 1764146002,
+        "miner": "test",
+        "nonce": "8b5e587764665a3f56f0bc3c52ff8cbdc059ccc7570daf354bc6580fca26a71f",
+        "note": "Block with early tx check, recursive (block in txids)",
+        "previd": "000087c09fca06ecff300ab743428556d16609d14531b887d15d0ba3aaed15ac",
+        "txids": [
+          "2840af44e1a3da9fe5a3ec2cb22fb3c085bb612c1e962c0defbc5cc46fa1b67e",
+          "000087c09fca06ecff300ab743428556d16609d14531b887d15d0ba3aaed15ac"
+        ],
+        "type": "block"
+      }
+    },
+    [
+      {
+        "type": "object",
+        "object": {
+          "T": "0000abc000000000000000000000000000000000000000000000000000000000",
+          "created": 1764146003,
+          "miner": "test",
+          "nonce": "3ef86fd77302930183fda31fc395e5d74d3b0c2b24cd04ddc0ab5effe82713c6",
+          "note": "Block with early tx check, recursive (block in txids)",
+          "previd": "00002c9198bc1f7c0a23999865b92c0fb0bb0bd33a756a05ad2419e53404f2e9",
+          "txids": [
+            "f75d2a956862efbb621977bb9757e3ed5c95cb715fe0d79067fd301ea9dfb39c"
+          ],
+          "type": "block"
+        }
+      },
+      false
+    ]
+  ]
+}
