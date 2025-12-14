@@ -129,7 +129,7 @@ async def run_test():
         reader, writer = await asyncio.open_connection(hostname, 18018,
                                        limit=512*1024)
     except Exception as e:
-        print_error(f"failed to connect to peer:  {str(e)}")
+        #print_error(f"failed to connect to peer:  {str(e)}")
         return
 
     print_info (f"\nRunning test: {tcobj['description']}")
