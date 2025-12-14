@@ -30,12 +30,15 @@ class Validator:
         for key in self.pending_objects.copy().keys():
             o = self.pending_objects[key]
             if o['timeout'] < time.time():
-                #invalidate this
-                o['queue'].put_nowait({
-                    'type' : 'error',
-                    'name' : 'UNFINDABLE_OBJECT',
-                    'msg' : 'Timeout triggered'
-                })
+                # invalidate this
+                try:
+                    o['queue'].put_nowait({
+                        'type': 'error',
+                        'name': 'UNFINDABLE_OBJECT',
+                        'msg': 'Timeout triggered'
+                    })
+                except Exception:
+                    pass
                 self.pending_objects.pop(key)
                 self.new_invalid_object(key)
 
@@ -68,14 +71,17 @@ class Validator:
                 #this object is invalid
                 #send this into the thread queue
                 try:
-                    o['thread'].put_nowait({
+                    # FIX 1: Use 'queue' instead of 'thread'
+                    # FIX 2: Add 'type': 'error'
+                    o['queue'].put_nowait({
+                        'type': 'error',
                         'msg': f"Object {key} depends on invalid object {objid}",
                         'name': "INVALID_ANCESTRY"
                     })
-                    #TODO: propagate this errror
+
                     self.pending_objects.pop(key)
+                    # Propagate the error recursively
                     self.new_invalid_object(key)
-                except Exception:
+                except Exception as e:
+                    print(f"Error propagating invalid object: {e}")
                     pass
-
-

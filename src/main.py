@@ -95,13 +95,13 @@ def mk_ihaveobject_msg(objid):
     return {"type":"ihaveobject", "objectid":objid}
 
 def mk_chaintip_msg(blockid):
-    pass # TODO
+    return {"type": "chaintip", "blockid": blockid}
 
 def mk_mempool_msg(txids):
     pass # TODO
 
 def mk_getchaintip_msg():
-    pass # TODO
+    return {"type": "getchaintip"}
 
 def mk_getmempool_msg():
     pass # TODO
@@ -524,13 +524,18 @@ async def handle_object_msg(msg_dict, queue):
         VALIDATOR.verification_pending(obj_dict, queue, e.missingobjids)
         print("Returning")
         return # and consume exception
+    except sqlite3.IntegrityError:
+        # We (or another thread) already inserted it. This is fine.
+        pass
     except NodeException as e: # whatever the reason, just reject this
         con.rollback()
         print("Failed to verify object '{}': {}".format(objid, str(e)))
+        VALIDATOR.new_invalid_object(objid)
         raise e # and re-raise this
     except Exception as e:
         print(f"An exception occured: {str(e)}")
         con.rollback()
+        VALIDATOR.new_invalid_object(objid)
         raise e
     finally:
         con.close()
@@ -538,30 +543,66 @@ async def handle_object_msg(msg_dict, queue):
 
 # returns the chaintip blockid
 def get_chaintip_blockid():
-    pass # TODO
+    con = sqlite3.connect(const.DB_NAME)
+    try:
+        cur = con.cursor()
+        res = cur.execute("SELECT blockid FROM heights ORDER BY height DESC LIMIT 1")
+
+        obj_tuple = res.fetchone()
+        # don't have object
+        if obj_tuple is None:
+            return None
+        return obj_tuple[0]
+    finally:
+        con.close()
 
 
 async def handle_getchaintip_msg(msg_dict, writer):
-    pass # TODO
+    chaintip_blockid = get_chaintip_blockid()
+    await write_msg(writer, mk_chaintip_msg(chaintip_blockid))
 
 
 async def handle_getmempool_msg(msg_dict, writer):
     pass # TODO
 
 
-async def handle_chaintip_msg(msg_dict):
-    pass # TODO
+async def handle_chaintip_msg(msg_dict, queue):
+    blockid = msg_dict['blockid']
+
+    if int(blockid, 16) >= int(const.BLOCK_TARGET, 16):
+        raise ErrorInvalidBlockPOW(f"Chaintip {blockid} does not satisfy Proof-of-Work equation")
+
+    con = sqlite3.connect(const.DB_NAME)
+    try:
+        cur = con.cursor()
+        res = cur.execute("SELECT obj FROM objects WHERE oid = ?", (blockid,))
+
+        obj_tuple = res.fetchone()
+        # don't have object
+        if obj_tuple is None:
+            print(f"Chaintip {blockid} is new. Requesting it.")
+            for q in CONNECTIONS.values():
+                print(f"Requesting {blockid} from peer")
+                await q.put(mk_getobject_msg(blockid))
+            return
+
+        obj_dict = objects.expand_object(obj_tuple[0])
+        if obj_dict['type'] != 'block':
+            raise ErrorInvalidFormat(f"Object {blockid} received as chaintip is not a block!")
+
+    finally:
+        con.close()
 
 
 async def handle_mempool_msg(msg_dict):
     pass # TODO
 
 # Helper function
-async def handle_queue_msg(msg_dict, writer):
+async def handle_queue_msg(msg_dict, writer, queue):
     #check if this is a special message
     #currently there are only type:'resumeValidation'
     if msg_dict['type'] == 'resumeValidation':
-        await handle_object_msg(msg_dict, None)
+        await handle_object_msg(msg_dict, queue)
     else:
         await write_msg(writer, msg_dict)
 
@@ -592,7 +633,8 @@ async def handle_connection(reader, writer):
         # Send initial messages
         await write_msg(writer, mk_hello_msg())
         await write_msg(writer, mk_getpeers_msg())
-        
+        await write_msg(writer, mk_getchaintip_msg())
+
         # Complete handshake
         firstmsg_str = await asyncio.wait_for(reader.readline(),
                 timeout=const.HELLO_MSG_TIMEOUT)
@@ -620,7 +662,7 @@ async def handle_connection(reader, writer):
             if queue_task in done:
                 queue_msg = queue_task.result()
                 queue_task = None
-                await handle_queue_msg(queue_msg, writer)
+                await handle_queue_msg(queue_msg, writer, queue)
                 queue.task_done()
 
             # if no message was received over the network continue
@@ -650,7 +692,7 @@ async def handle_connection(reader, writer):
                 elif msg_type == 'getchaintip':
                     await handle_getchaintip_msg(msg, writer)
                 elif msg_type == 'chaintip':
-                    await handle_chaintip_msg(msg)
+                    await handle_chaintip_msg(msg, queue)
                 elif msg_type == 'getmempool':
                     await handle_getmempool_msg(msg, writer)
                 elif msg_type == 'mempool':

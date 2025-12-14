@@ -355,7 +355,7 @@ def verify_transaction(tx_dict, input_txs):
             in_dict[ptxid] = {ptxidx}
 
         if ptxid not in input_txs:
-            raise ErrorUnknownObject(f"Transaction {ptxid} not known")
+            raise NeedMoreObjects(f"Transaction {ptxid} not known", [ptxid])
 
         ptx_dict = input_txs[ptxid]
 
@@ -439,10 +439,16 @@ def verify_block(block_dict):
     prev_height = None
 
     previd = block_dict['previd']
-    prev_block, prev_utxo, prev_height = get_block_utxo_height(previd)
 
-    if prev_block is None:
-        raise ErrorUnknownObject("Previous block missing or invalid!")
+    if previd is None:
+        # If previd is None, this MUST be the genesis block.
+        prev_height = -1
+    else:
+        # Try to retrieve parent info
+        prev_block, prev_utxo, prev_height = get_block_utxo_height(previd)
+
+        if prev_block is None:
+            raise NeedMoreObjects(f"Parent {previd} missing",[previd])
 
     # check if we have all TXs, fetch them if necessary
     txs = get_block_txs(block_dict['txids'])
@@ -450,8 +456,6 @@ def verify_block(block_dict):
 
     print(f'Set of missing transactions: {missing_txids}')
     if len(missing_txids) > 0:
-        txs = get_block_txs(block_dict['txids'])
-        missing_txids = set(block_dict['txids']) - set(txs.keys())
         raise NeedMoreObjects(f"Block {blockid} requires transactions {missing_txids}", missing_txids)
 
     new_utxo, height = verify_block_tail(block_dict, prev_block, prev_utxo, prev_height, txs)
