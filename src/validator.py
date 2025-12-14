@@ -22,7 +22,7 @@ class Validator:
             'object' : obj,
             'queue' : thread,
             'unknown_objects' : unknown_objects,
-            'timeout' : time.time() + 10
+            'timeout' : time.time() + 5
         }
         asyncio.create_task(delay(self.timeout, 5))
 
@@ -56,8 +56,10 @@ class Validator:
                         o['queue'].put_nowait({
                             'type' : 'resumeValidation', #this is a special type to tell the thread to restart validation
                             'object': o['object'],
+                            'queue': o['queue']
                         })
-                    except Exception:
+                    except Exception as e:
+                        print(f"Error resuming validation: {e}")
                         pass
 
     def new_invalid_object(self, objid):
@@ -71,13 +73,13 @@ class Validator:
                     o['queue'].put_nowait({
                         'msg': f"Object {key} depends on invalid object {objid}",
                         'name': "INVALID_ANCESTRY",
-                        'type': 'error'
+                        'type': 'error',
+                        'queue': o['queue']
                     })
-                    #TODO NOW: propagate this error
                     self.pending_objects.pop(key)
                     self.new_invalid_object(key)
                 except Exception as e:
                     print(f"Error propagating invalid object: {e}")
                     pass
 
-
+VALIDATOR = Validator()
