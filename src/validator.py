@@ -22,7 +22,7 @@ class Validator:
             'object' : obj,
             'queue' : thread,
             'unknown_objects' : unknown_objects,
-            'timeout' : time.time() + 5
+            'timeout' : time.time() + 10
         }
         asyncio.create_task(delay(self.timeout, 5))
 
@@ -72,7 +72,7 @@ class Validator:
                         'msg': f"Object {key} depends on invalid object {objid}",
                         'name': "INVALID_ANCESTRY"
                     })
-                    #TODO: propagate this errror
+                    #TODO NOW: propagate this error
                     self.pending_objects.pop(key)
                     self.new_invalid_object(key)
                 except Exception:

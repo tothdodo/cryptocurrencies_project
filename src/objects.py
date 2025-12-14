@@ -18,6 +18,7 @@ import constants as const
 # perform syntactic checks. returns true iff check succeeded
 OBJECTID_REGEX = re.compile("^[0-9a-f]{64}$")
 
+
 def validate_objectid(objid_str):
     if not isinstance(objid_str, str):
         return False
@@ -277,6 +278,8 @@ def validate_block(block_dict):
     if len(set(block_dict_copy.keys()) - set(['type', 'txids', 'nonce', 'previd', 'created', 'T'])) != 0:
         raise ErrorInvalidFormat("Block object invalid: Contains additional keys")
 
+    # TODO NOW: Check whether it is a chaintip block, if yes, store it
+
     return True
 
 
@@ -338,6 +341,9 @@ def verify_transaction(tx_dict, input_txs):
     if 'height' in tx_dict:
         return  # assume all syntactically valid coinbase transactions are valid
 
+    # unknown transactions
+    unknown_txids = set()
+
     # regular transaction
     insum = 0  # sum of input values
     in_dict = dict()
@@ -355,7 +361,8 @@ def verify_transaction(tx_dict, input_txs):
             in_dict[ptxid] = {ptxidx}
 
         if ptxid not in input_txs:
-            raise ErrorUnknownObject(f"Transaction {ptxid} not known")
+            unknown_txids.add(ptxid)
+            # raise ErrorUnknownObject(f"Transaction {ptxid} not known")
 
         ptx_dict = input_txs[ptxid]
 
@@ -371,6 +378,9 @@ def verify_transaction(tx_dict, input_txs):
             raise ErrorInvalidTxSignature("Invalid signature from previous TX '{}'!".format(ptxid))
 
         insum = insum + output['value']
+
+    if len(unknown_txids) > 0:
+        raise NeedMoreObjects(f"Transaction {get_objid(tx_dict)} requires transactions {unknown_txids}", unknown_txids)
 
     if insum < sum([o['value'] for o in tx_dict['outputs']]):
         raise ErrorInvalidTxConservation("Sum of inputs < sum of outputs!")
@@ -438,21 +448,24 @@ def verify_block(block_dict):
     prev_block = None
     prev_height = None
 
+    # check if we have all TXs, fetch them if necessary
+    txs = get_block_txs(block_dict['txids'])
+    missing_txids = set(block_dict['txids']) - set(txs.keys())
+    all_missing_objectids = set(missing_txids)
+
     previd = block_dict['previd']
     prev_block, prev_utxo, prev_height = get_block_utxo_height(previd)
 
     if prev_block is None:
-        raise ErrorUnknownObject("Previous block missing or invalid!")
-
-    # check if we have all TXs, fetch them if necessary
-    txs = get_block_txs(block_dict['txids'])
-    missing_txids = set(block_dict['txids']) - set(txs.keys())
+        print(f'Missing a parent block id: {previd}')
+        if int(previd, 16) >= int(const.BLOCK_TARGET, 16):
+            raise ErrorInvalidAncestry(f"Parent block does not satisfy proof-of-work equation (has an objectid of {get_objid(block_dict)})!")
+        all_missing_objectids.add(previd)
+        # raise ErrorUnknownObject("Previous block missing or invalid!")
 
     print(f'Set of missing transactions: {missing_txids}')
-    if len(missing_txids) > 0:
-        txs = get_block_txs(block_dict['txids'])
-        missing_txids = set(block_dict['txids']) - set(txs.keys())
-        raise NeedMoreObjects(f"Block {blockid} requires transactions {missing_txids}", missing_txids)
+    if len(all_missing_objectids) > 0:
+        raise NeedMoreObjects(f"Block {blockid} requires objects {all_missing_objectids}", all_missing_objectids)
 
     new_utxo, height = verify_block_tail(block_dict, prev_block, prev_utxo, prev_height, txs)
 
