@@ -750,7 +750,7 @@ async def connect_to_node(peer: Peer):
         reader, writer = await asyncio.open_connection(peer.host, peer.port,
                 limit=const.RECV_BUFFER_LIMIT)
     except Exception as e:
-        print(f"failed to connect to peer {peer.host}:{peer.port}: {str(e)}")
+        #print(f"failed to connect to peer {peer.host}:{peer.port}: {str(e)}")
 
         # remove this peer from your known peers, unless this is a bootstrap peer
         if not peer.isBootstrap:
@@ -795,7 +795,7 @@ def resupply_connections():
     if len(available_peers) < npeers:
         npeers = len(available_peers)
 
-    print("Connecting to {} new peers.".format(npeers))
+    #print("Connecting to {} new peers.".format(npeers))
 
     chosen_peers = random.sample(tuple(available_peers), npeers)
     for p in chosen_peers:

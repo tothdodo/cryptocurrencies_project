@@ -363,21 +363,21 @@ def verify_transaction(tx_dict, input_txs):
         if ptxid not in input_txs:
             unknown_txids.add(ptxid)
             # raise ErrorUnknownObject(f"Transaction {ptxid} not known")
+        else:
+            ptx_dict = input_txs[ptxid]
 
-        ptx_dict = input_txs[ptxid]
+            # just to be sure
+            if ptx_dict['type'] != 'transaction':
+                raise ErrorInvalidFormat("Previous TX '{}' is not a transaction!".format(ptxid))
 
-        # just to be sure
-        if ptx_dict['type'] != 'transaction':
-            raise ErrorInvalidFormat("Previous TX '{}' is not a transaction!".format(ptxid))
+            if ptxidx >= len(ptx_dict['outputs']):
+                raise ErrorInvalidTxOutpoint("Invalid output index in previous TX '{}'!".format(ptxid))
 
-        if ptxidx >= len(ptx_dict['outputs']):
-            raise ErrorInvalidTxOutpoint("Invalid output index in previous TX '{}'!".format(ptxid))
+            output = ptx_dict['outputs'][ptxidx]
+            if not verify_tx_signature(tx_dict, i['sig'], output['pubkey']):
+                raise ErrorInvalidTxSignature("Invalid signature from previous TX '{}'!".format(ptxid))
 
-        output = ptx_dict['outputs'][ptxidx]
-        if not verify_tx_signature(tx_dict, i['sig'], output['pubkey']):
-            raise ErrorInvalidTxSignature("Invalid signature from previous TX '{}'!".format(ptxid))
-
-        insum = insum + output['value']
+            insum = insum + output['value']
 
     if len(unknown_txids) > 0:
         raise NeedMoreObjects(f"Transaction {get_objid(tx_dict)} requires transactions {unknown_txids}", unknown_txids)
