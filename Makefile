@@ -15,9 +15,8 @@ build:
 
 # add own tests if you want
 run-tests:
-# Perform a simple connection check   
-#	nc -zv localhost 18018	
-	powershell -Command "Test-NetConnection -ComputerName localhost -Port 18018"
+	# Perform a simple connection check   
+	nc -zv localhost 18018	
  
 
 # don't touch these targets 

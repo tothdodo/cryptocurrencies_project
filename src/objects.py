@@ -6,69 +6,52 @@ from jcs import canonicalize
 import sqlite3
 import copy
 
-from main import gather_previous_txs
 from message.msgexceptions import *
 
 import copy
 import hashlib
 import json
 import re
+import time
 
 import constants as const
-from validator import VALIDATOR
 
 # perform syntactic checks. returns true iff check succeeded
 OBJECTID_REGEX = re.compile("^[0-9a-f]{64}$")
-
-
 def validate_objectid(objid_str):
     if not isinstance(objid_str, str):
         return False
     return OBJECTID_REGEX.match(objid_str)
 
-
 PUBKEY_REGEX = re.compile("^[0-9a-f]{64}$")
-
-
 def validate_pubkey(pubkey_str):
     if not isinstance(pubkey_str, str):
         return False
     return PUBKEY_REGEX.match(pubkey_str)
 
-
 SIGNATURE_REGEX = re.compile("^[0-9a-f]{128}$")
-
-
 def validate_signature(sig_str):
     if not isinstance(sig_str, str):
         return False
     return SIGNATURE_REGEX.match(sig_str)
 
-
 NONCE_REGEX = re.compile("^[0-9a-f]{64}$")
-
-
 def validate_nonce(nonce_str):
     if not isinstance(nonce_str, str):
         return False
     return NONCE_REGEX.match(nonce_str)
 
-
 HUMAN_READABLE_REGEX = re.compile("^[ -~]*$")
-
-
 def validate_human_readable(s):
     if not isinstance(s, str):
         return False
     return HUMAN_READABLE_REGEX.match(s)
-
 
 # note that the target is hardcoded
 def validate_target(target_str):
     if not isinstance(target_str, str):
         return False
     return const.BLOCK_TARGET == target_str
-
 
 # syntactic checks
 def validate_transaction_input(in_dict):
@@ -106,8 +89,7 @@ def validate_transaction_input(in_dict):
     if len(set(in_dict.keys()) - set(['sig', 'outpoint'])) != 0:
         raise ErrorInvalidFormat("Additional keys present!")
 
-    return True  # syntax check done
-
+    return True # syntax check done
 
 # syntactic checks
 def validate_transaction_output(out_dict):
@@ -131,20 +113,19 @@ def validate_transaction_output(out_dict):
     if len(set(out_dict.keys()) - set(['pubkey', 'value'])) != 0:
         raise ErrorInvalidFormat("Additional keys present!")
 
-    return True  # syntax check done
-
+    return True # syntax check done
 
 # syntactic checks
 def validate_transaction(trans_dict):
     if not isinstance(trans_dict, dict):
-        raise ErrorInvalidFormat("Transaction object invalid: Not a dictionary!")  # assert: false
+        raise ErrorInvalidFormat("Transaction object invalid: Not a dictionary!") # assert: false
 
     if 'type' not in trans_dict:
-        raise ErrorInvalidFormat("Transaction object invalid: Type not set")  # assert: false
+        raise ErrorInvalidFormat("Transaction object invalid: Type not set") # assert: false
     if not isinstance(trans_dict['type'], str):
-        raise ErrorInvalidFormat("Transaction object invalid: Type not a string")  # assert: false
+        raise ErrorInvalidFormat("Transaction object invalid: Type not a string") # assert: false
     if not trans_dict['type'] == 'transaction':
-        raise ErrorInvalidFormat("Transaction object invalid: Type not 'transaction'")  # assert: false
+        raise ErrorInvalidFormat("Transaction object invalid: Type not 'transaction'") # assert: false
 
     if 'outputs' not in trans_dict:
         raise ErrorInvalidFormat("Transaction object invalid: No outputs key set")
@@ -192,7 +173,7 @@ def validate_transaction(trans_dict):
     if len(set(trans_dict.keys()) - set(['type', 'inputs', 'outputs'])) != 0:
         raise ErrorInvalidFormat(f"Normal transaction object invalid: Additional key present")
 
-    return True  # syntax check done
+    return True # syntax check done
 
 
 # syntactic checks
@@ -208,8 +189,7 @@ def validate_block(block_dict):
         raise ErrorInvalidFormat("Block object invalid: Type not 'block'!")
 
     if int(get_objid(block_dict), 16) >= int(const.BLOCK_TARGET, 16):
-        raise ErrorInvalidBlockPOW(
-            f"Block does not satisfy proof-of-work equation (has an objectid of {get_objid(block_dict)})!")
+        raise ErrorInvalidBlockPOW(f"Block does not satisfy proof-of-work equation (has an objectid of {get_objid(block_dict)})!")
 
     if 'txids' not in block_dict:
         raise ErrorInvalidFormat("Block object invalid: txids not set!")
@@ -232,7 +212,7 @@ def validate_block(block_dict):
         if get_objid(block_dict) != const.GENESIS_BLOCK_ID:
             raise ErrorInvalidGenesis("Block object invalid: previd is null but this is not the genesis block")
         else:
-            pass  # this is the genesis block
+            pass # this is the genesis block
     else:
         if not isinstance(block_dict['previd'], str):
             raise ErrorInvalidFormat("Block object invalid: previd not null and not a string")
@@ -248,6 +228,8 @@ def validate_block(block_dict):
         raise ErrorInvalidFormat("Block object invalid: created timestamp smaller than zero")
     try:
         datetime.utcfromtimestamp(ts)
+        if ts > time.time():
+            raise ErrorInvalidBlockTimestamp("Block object invalid: created timestamp greater than current time")
     except Exception:
         raise ErrorInvalidBlockTimestamp("Block object invalid: created timestamp could not be parsed!")
 
@@ -282,7 +264,6 @@ def validate_block(block_dict):
 
     return True
 
-
 # syntactic checks
 def validate_object(obj_dict):
     if not isinstance(obj_dict, dict):
@@ -293,30 +274,19 @@ def validate_object(obj_dict):
     if not isinstance(obj_dict['type'], str):
         raise ErrorInvalidFormat("Object invalid: Type not a string")
 
-    try:
-        obj_type = obj_dict['type']
-        if obj_type == 'transaction':
-            return validate_transaction(obj_dict)
-        elif obj_type == 'block':
-            return validate_block(obj_dict)
-    except NodeException as e:  # whatever the reason, just reject this
-        objid = get_objid(obj_dict)
-        print("Failed to verify object '{}': {}".format(objid, str(e)))
-        VALIDATOR.new_invalid_object(objid)
-        raise e  # and re-raise this
-
-
+    obj_type = obj_dict['type']
+    if obj_type == 'transaction':
+        return validate_transaction(obj_dict)
+    elif obj_type == 'block':
+        return validate_block(obj_dict)
 
     raise ErrorInvalidFormat("Object invalid: Unknown object type")
-
 
 def expand_object(obj_str):
     return json.loads(obj_str)
 
-
 def get_objid(obj_dict):
     return hashlib.blake2s(canonicalize(obj_dict)).hexdigest()
-
 
 # perform semantic checks
 
@@ -337,74 +307,31 @@ def verify_tx_signature(tx_dict, sig, pubkey):
 
     return True
 
-
 class TXVerifyException(Exception):
     pass
-
-def early_transaction_validation(tx_dict, input_txs):
-    # ---------------------------
-    # SETUP
-    # ---------------------------
-    unknown_txids = set()
-    insum = 0  # sum of input values
-    in_dict = dict()  # For tracking internal double-spends (same input used twice)
-
-    for i in tx_dict['inputs']:
-        ptxid = i['outpoint']['txid']
-        ptxidx = i['outpoint']['index']
-
-        # 1. Internal Double Spend Check (Can be done without external info)
-        if ptxid in in_dict:
-            if ptxidx in in_dict[ptxid]:
-                raise ErrorInvalidTxConservation(
-                    f"The same input ({ptxid}, {ptxidx}) was used multiple times in this transaction")
-            else:
-                in_dict[ptxid].add(ptxidx)
-        else:
-            in_dict[ptxid] = {ptxidx}
-
-        # 2. Dependency Check
-        if ptxid not in input_txs:
-            # We don't have this parent yet. Mark it, but continue checking others.
-            unknown_txids.add(ptxid)
-        else:
-            # ---------------------------
-            # EARLY VALIDATION: KNOWN PARENTS
-            # ---------------------------
-            # We possess the parent transaction, so we validate against it
-            # immediately, even if other inputs are missing.
-
-            ptx_dict = input_txs[ptxid]
-
-            # A. Structure Check
-            if ptx_dict.get('type') != 'transaction':
-                raise ErrorInvalidFormat("Previous TX '{}' is not a transaction!".format(ptxid))
-
-            # B. Bounds Check
-            if ptxidx >= len(ptx_dict['outputs']):
-                raise ErrorInvalidTxOutpoint("Invalid output index in previous TX '{}'!".format(ptxid))
-
-            # C. Signature Check (The most expensive and critical early check)
-            output = ptx_dict['outputs'][ptxidx]
-            if not verify_tx_signature(tx_dict, i['sig'], output['pubkey']):
-                raise ErrorInvalidTxSignature("Invalid signature from previous TX '{}'!".format(ptxid))
-
-            # D. Value Accumulation (Only possible for known inputs)
-            insum += output['value']
-
 
 # semantic checks
 # assert: tx_dict is syntactically valid
 def verify_transaction(tx_dict, input_txs):
     # coinbase transaction
     if 'height' in tx_dict:
-        return  # assume all syntactically valid coinbase transactions are valid
+        return # assume all syntactically valid coinbase transactions are valid
 
-    # unknown transactions
-    unknown_txids = set()
+    tx_id = get_objid(tx_dict)
+
+    missing_objects = []
+
+    for i in tx_dict['inputs']:
+        ptxid = i['outpoint']['txid']
+
+        if ptxid not in input_txs:
+            missing_objects.append(ptxid)
+
+    if len(missing_objects) > 0:
+        raise NeedMoreObjects(f"Transaction {tx_id} needs more objects {missing_objects}", missing_objects)
 
     # regular transaction
-    insum = 0  # sum of input values
+    insum = 0 # sum of input values
     in_dict = dict()
     for i in tx_dict['inputs']:
         ptxid = i['outpoint']['txid']
@@ -412,47 +339,29 @@ def verify_transaction(tx_dict, input_txs):
 
         if ptxid in in_dict:
             if ptxidx in in_dict[ptxid]:
-                raise ErrorInvalidTxConservation(
-                    f"The same input ({ptxid}, {ptxidx}) was used multiple times in this transaction")
+                raise ErrorInvalidTxConservation(f"The same input ({ptxid}, {ptxidx}) was used multiple times in this transaction")
             else:
                 in_dict[ptxid].add(ptxidx)
         else:
             in_dict[ptxid] = {ptxidx}
 
-        if ptxid not in input_txs:
-            unknown_txids.add(ptxid)
-            # raise ErrorUnknownObject(f"Transaction {ptxid} not known")
-        else:
-            ptx_dict = input_txs[ptxid]
+        ptx_dict = input_txs[ptxid]
 
-            # just to be sure
-            if ptx_dict['type'] != 'transaction':
-                raise ErrorInvalidFormat("Previous TX '{}' is not a transaction!".format(ptxid))
+        # just to be sure
+        if ptx_dict['type'] != 'transaction':
+            raise ErrorInvalidFormat("Previous TX '{}' is not a transaction!".format(ptxid))
 
-            if ptxidx >= len(ptx_dict['outputs']):
-                raise ErrorInvalidTxOutpoint("Invalid output index in previous TX '{}'!".format(ptxid))
+        if ptxidx >= len(ptx_dict['outputs']):
+            raise ErrorInvalidTxOutpoint("Invalid output index in previous TX '{}'!".format(ptxid))
 
-            output = ptx_dict['outputs'][ptxidx]
-            if not verify_tx_signature(tx_dict, i['sig'], output['pubkey']):
-                raise ErrorInvalidTxSignature("Invalid signature from previous TX '{}'!".format(ptxid))
+        output = ptx_dict['outputs'][ptxidx]
+        if not verify_tx_signature(tx_dict, i['sig'], output['pubkey']):
+            raise ErrorInvalidTxSignature("Invalid signature from previous TX '{}'!".format(ptxid))
 
-            insum = insum + output['value']
-
-    # ---------------------------
-    # EARLY TRANSACTION VALIDATON
-    # ---------------------------
-    # try:
-    #     early_transaction_validation(tx_dict, input_txs)
-    # except FaultyNodeException as e:
-    #     raise e
-    # ---------------------------
-
-    if len(unknown_txids) > 0:
-        raise NeedMoreObjects(f"Transaction {get_objid(tx_dict)} requires transactions {unknown_txids}", unknown_txids)
+        insum = insum + output['value']
 
     if insum < sum([o['value'] for o in tx_dict['outputs']]):
         raise ErrorInvalidTxConservation("Sum of inputs < sum of outputs!")
-
 
 def get_block_utxo_height(blockid):
     con = sqlite3.connect(const.DB_NAME)
@@ -487,7 +396,6 @@ def get_block_utxo_height(blockid):
     finally:
         con.close()
 
-
 # get all transactions as a dict txid -> tx from a list of ids
 def get_block_txs(txids):
     txs = dict()
@@ -508,116 +416,6 @@ def get_block_txs(txids):
         con.close()
 
 
-def get_object(objid):
-    """
-    Fetches an object from the database by its ID and expands it.
-    Returns the object dictionary or None if not found.
-    """
-    obj_dict = None
-    con = sqlite3.connect(const.DB_NAME)
-
-    try:
-        cur = con.cursor()
-        # Query for the raw object blob
-        res = cur.execute("SELECT obj FROM objects WHERE oid = ?", (objid,))
-        obj_tuple = res.fetchone()
-
-        # If the object exists, expand/deserialize it
-        if obj_tuple is not None:
-            obj_dict = expand_object(obj_tuple[0])
-
-    except Exception as e:
-        # It is often useful to print/log database errors during debugging
-        print(f"Database error in get_object: {e}")
-    finally:
-        # Ensure connection is closed even if errors occur
-        con.close()
-
-    return obj_dict
-
-def early_block_validation(missing_txids, prev_block, block_dict, prev_height, txs):
-    try:
-    # 1. Check if we have the transactions content for this block
-
-        # 2. Parent-dependent checks (Height and Time)
-        # We perform these only if the parent is known (prev_block is not None).
-        if prev_block:
-            # Check A: Height Continuity
-            # The block's height must be exactly one greater than the parent's height.
-            if block_dict['height'] != prev_height + 1:
-                raise FaultyNodeException(
-                    f"Invalid block height: {block_dict['height']}. "
-                    f"Expected {prev_height + 1} (parent height + 1)."
-                )
-
-            # Check B: Time Continuity
-            # A block must be created strictly after its parent.
-            if block_dict['T'] <= prev_block['T']:
-                raise FaultyNodeException(
-                    f"Invalid timestamp: {block_dict['T']}. "
-                    f"Must be greater than parent timestamp {prev_block['T']}."
-                )
-
-        # 3. Coinbase and Fee Validation
-        # We can validate the coinbase output even if we don't know the parent block,
-        # provided we have all the transactions referenced by the inputs (dependencies).
-
-        # Assume the first transaction is the Coinbase
-        coinbase_txid = block_dict['txids'][0]
-        coinbase_tx = txs[coinbase_txid]
-
-        # Calculate the total output of the coinbase
-        coinbase_output_value = sum(out['value'] for out in coinbase_tx['outputs'])
-
-        total_fees = 0
-        dependencies_present = True
-
-        # Iterate over non-coinbase transactions to calculate fees
-        for txid in block_dict['txids'][1:]:
-            tx = txs[txid]
-            input_sum = 0
-            output_sum = sum(out['value'] for out in tx['outputs'])
-
-            # To calculate input sum, we must look up the referenced previous transactions
-            for tx_input in tx['inputs']:
-                # Assumption: get_objid or a database fetch is available here.
-                # In this scope, we might need a helper to fetch the prev_out_tx.
-                # We check if we can fetch the dependency.
-                prev_out_tx = get_object(tx_input['prev_out']['txid']) # Hypothetical helper
-
-                if not prev_out_tx:
-                    dependencies_present = False
-                    break
-
-                # Add the value of the specific output referenced
-                prev_idx = tx_input['prev_out']['n']
-                input_sum += prev_out_tx['outputs'][prev_idx]['value']
-
-            if not dependencies_present:
-                break
-
-            # Fee is Input - Output
-            total_fees += (input_sum - output_sum)
-
-        # If we successfully resolved all dependencies, we validate the math
-        if dependencies_present:
-            # Define Block Reward (assuming a constant or function)
-            BLOCK_REWARD = 50 * 10**8 # Example: 50 coins
-
-            max_allowed_coinbase = BLOCK_REWARD + total_fees
-
-            if coinbase_output_value > max_allowed_coinbase:
-                raise FaultyNodeException(
-                    f"Coinbase output {coinbase_output_value} exceeds "
-                    f"reward ({BLOCK_REWARD}) + fees ({total_fees})"
-                )
-    except FaultyNodeException as e:
-        raise e
-
-
-def early_check_block_parent(height):
-    pass
-
 def verify_block(block_dict):
     print(f"Called verify_block for block {block_dict}")
     blockid = get_objid(block_dict)
@@ -626,33 +424,21 @@ def verify_block(block_dict):
     prev_block = None
     prev_height = None
 
-    # check if we have all TXs, fetch them if necessary
-    txs = get_block_txs(block_dict['txids'])
-    missing_txids = set(block_dict['txids']) - set(txs.keys())
-    all_missing_objectids = set(missing_txids)
-
     previd = block_dict['previd']
     prev_block, prev_utxo, prev_height = get_block_utxo_height(previd)
 
-    # -------------------------------
-    # EARLY BLOCK VALIDATION
-    # -------------------------------
-    # try:
-    #     if len(missing_txids) == 0:
-    #         early_block_validation(missing_txids, prev_block, block_dict, prev_height, txs)
-    # except FaultyNodeException as e:
-    #     raise e
-    # -------------------------------
+    missing_objects = []
+    
+    # check if we have all TXs, fetch them if necessary
+    txs = get_block_txs(block_dict['txids'])
+    missing_objects = set(block_dict['txids']) - set(txs.keys())
 
     if prev_block is None:
-        print(f'Missing a parent block id: {previd}')
-        if int(previd, 16) >= int(const.BLOCK_TARGET, 16):
-            raise ErrorInvalidAncestry(f"Parent block does not satisfy proof-of-work equation (has an objectid of {get_objid(block_dict)})!")
-        all_missing_objectids.add(previd)
+        missing_objects.add(previd)
 
-    print(f"all_missing_objectids: {all_missing_objectids}")
-    if len(all_missing_objectids) > 0:
-        raise NeedMoreObjects(f"Block {blockid} requires objects {all_missing_objectids}", all_missing_objectids)
+    print(f'Set of missing objects: {missing_objects}')
+    if len(missing_objects) > 0:
+        raise NeedMoreObjects(f"Block {blockid} requires objects {missing_objects}", missing_objects)
 
     new_utxo, height = verify_block_tail(block_dict, prev_block, prev_utxo, prev_height, txs)
 
@@ -660,7 +446,6 @@ def verify_block(block_dict):
     # broadcast the new block's ID to all connected peers.
     print("Adding new object '{}'".format(blockid))
     return new_utxo, height
-
 
 # apply tx to utxo
 # returns mining fee
@@ -699,7 +484,6 @@ def update_utxo_and_calculate_fee(tx, utxo):
 
     return invalue - outvalue
 
-
 def verify_block_tail(block, prev_block, prev_utxo, prev_height, txs):
     if prev_block is None:
         # assert: false (should never happen)
@@ -709,23 +493,18 @@ def verify_block_tail(block, prev_block, prev_utxo, prev_height, txs):
         prev_created_ts = 0
         prev_height = -1
     else:
-        #if block.height != prev_block['height'] + 1:
-        #    raise ErrorInvalidFormat("Height of previous block is not correct!")
         if prev_block['type'] != 'block':
             raise ErrorInvalidFormat("Previous block is not a block!")
         if prev_utxo is None:
-            raise ErrorUnknownObject("No UTXO for previous block found!")  # assert: false (should never happen)
+            raise ErrorUnknownObject("No UTXO for previous block found!") # assert: false (should never happen)
         if prev_height is None:
-            raise ErrorUnknownObject("No height for previous block found!")  # assert: false (should never happen)
+            raise ErrorUnknownObject("No height for previous block found!") # assert: false (should never happen)
 
         prev_created_ts = prev_block['created']
 
     # check block timestamp
     if prev_created_ts >= block['created']:
         raise ErrorInvalidBlockTimestamp("Block not created after previous block!")
-
-    if block['created'] > int(datetime.now().timestamp()):
-        raise ErrorInvalidBlockTimestamp("Block creation time is in the future!")
 
     if any(tx['type'] != 'transaction' for tx in txs.values()):
         raise ErrorInvalidFormat("Not all transactions are transactions!")
@@ -739,7 +518,7 @@ def verify_block_tail(block, prev_block, prev_utxo, prev_height, txs):
     # recheck if we have all transactions
     for txid in block['txids']:
         if txid not in txs:
-            raise ErrorUnfindableObject("TX {} missing!".format(txid))  # assert: false (should never happen)
+            raise ErrorUnfindableObject("TX {} missing!".format(txid)) # assert: false (should never happen)
 
     first_txid = block['txids'][0]
     remaining_txids = block['txids']
@@ -754,7 +533,7 @@ def verify_block_tail(block, prev_block, prev_utxo, prev_height, txs):
         remaining_txids = block['txids'][1:]
 
         # add coinbase TX output to UTXO
-        utxo[cbtxid] = {'0': cbtx['outputs'][0]['value']}
+        utxo[cbtxid] = { '0': cbtx['outputs'][0]['value'] }
 
         # check coinbase (if included in block) height
         if cbtx['height'] != height:
@@ -784,13 +563,11 @@ def verify_block_tail(block, prev_block, prev_utxo, prev_height, txs):
 
     return utxo, height
 
-
 def store_transaction(obj_dict, cur):
     # assert: obj_dict is a valid transaction
     objid = get_objid(obj_dict)
     obj_str = canonicalize(obj_dict).decode('utf-8')
     cur.execute("INSERT INTO objects VALUES(?, ?)", (objid, obj_str))
-
 
 # Stores for a block its utxoset and height
 def store_block(obj_dict, utxo, height, cur):
@@ -802,3 +579,17 @@ def store_block(obj_dict, utxo, height, cur):
     cur.execute("INSERT INTO objects VALUES(?, ?)", (objid, obj_str))
     cur.execute("INSERT INTO utxo VALUES(?, ?)", (objid, utxo_str))
     cur.execute("INSERT INTO heights VALUES(?, ?)", (objid, height))
+
+def get_object(objid):
+    con = sqlite3.connect(const.DB_NAME)
+    try:
+        cur = con.cursor()
+
+        res = cur.execute("SELECT obj FROM objects WHERE oid = ?", (objid,))
+        row = res.fetchone()
+        if row is not None:
+            return expand_object(row[0])
+        else:
+            return None
+    finally:
+        con.close()

@@ -75,12 +75,6 @@ class ErrorInvalidBlockCoinbase(FaultyNodeException):
         self.error_name = "INVALID_BLOCK_COINBASE"
         super().__init__(self.message, self.error_name)
 
-class ErrorInvalidAncestry(FaultyNodeException):
-    def __init__(self, message) -> None:
-        self.message = message
-        self.error_name = "INVALID_ANCESTRY"
-        super().__init__(self.message, self.error_name)
-
 class ErrorUnknownObject(NonfaultyNodeException):
     def __init__(self, message) -> None:
         self.message = message
@@ -99,4 +93,3 @@ class NeedMoreObjects(NonfaultyNodeException):
         self.missingobjids = missingobjids
         self.error_name = "---"
         super().__init__(self.message, self.error_name)
-
