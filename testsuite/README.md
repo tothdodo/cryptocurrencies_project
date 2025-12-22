@@ -7,7 +7,7 @@ The test suite can be downloaded [here](https://fnord.at/ccw25/testsuite.tgz)
 Testcases for Task 3 can be downloaded [here](https://fnord.at/ccw25/tests3.tgz)
 
 Testcases for Task 4 can be downloaded [here](https://fnord.at/ccw25/tests4.tgz)
-(note: the test cases in the Task4\_freshdb directory need to be run on a freshly initialized database or else they will fail)
+(note: the test cases in the Task4\_freshdb directory need to be run on a freshly initialized database or else they will likely fail)
 
 ## Updates
 

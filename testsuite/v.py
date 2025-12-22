@@ -88,3 +88,20 @@ def chaintip(block):
 
 def getchaintip(block):
     return ('cmd', {"type":"getchaintip"}, {'type':'chaintip','blockid':gobjid(block)})
+
+def mempool(txs):
+    txids = list(map(gobjid,txs))
+    return ('cmd', {"type":"mempool", "txids": txids}, "")
+
+def getmempool(txs):
+    return ('cmd', {"type":"getmempool"}, {"type":"mempool","txids":list(map(gobjid,txs))})
+
+def mempool_contains(txs):
+    return ('cmd', {"type":"getmempool"}, { 'mempool_contains': list(map(gobjid,txs)) }, 'function')
+
+def mempool_excludes(txs):
+    return ('cmd', {"type":"getmempool"}, { 'mempool_excludes': list(map(gobjid,txs)) }, 'function')
+
+def mempool_include_exclude(tx_inc, tx_exc):
+    return ('cmd', {"type":"getmempool"}, { 'mempool_contains': list(map(gobjid,tx_inc)),
+                                           'mempool_excludes': list(map(gobjid,tx_exc)) }, 'function')

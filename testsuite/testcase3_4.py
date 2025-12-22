@@ -122,7 +122,7 @@ def gen_test_wrong_chain_input():
 
 
 def gen_test_right_txid_output():
-    description = "A transaction references invalid txid outpoint"
+    description = "A transaction references valid txid outpoint"
     block_valid_1 = mkBlock(None, [coinbase_trans], "This block has a valid coinbase transaction")
     mine(block_valid_1)
     coinbase_trans_1 = mkCoinbase(0, 2, 50000000000000)

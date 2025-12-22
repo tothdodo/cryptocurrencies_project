@@ -30,7 +30,7 @@ def print_input(msg):
     if (colored):
         print (colored(msg, 'yellow'))
     else:
-        print (f"<= {msg}" )
+        print (f"<= {msg}")
 
 def print_info(msg):
     if (colored):
@@ -76,17 +76,23 @@ async def process_loop(reader, writer, _timeout=2.0):
         if (res is not None):
             return res
 
-async def expect(reader, obj):
+async def expect_get(reader):
     try:
         xstr = await asyncio.wait_for(reader.readline(), timeout=3.0)
     except:
         print("Wait for failed")
-        return False
+        return None
     if (xstr == b""):
         print_error ("EOF received")
-        return False
+        return None
     print_input(xstr.decode('utf-8').strip())
     resobj = json.loads(xstr)
+    return resobj
+
+async def expect(reader,obj):
+    resobj = await expect_get (reader)
+    if (resobj is None):
+        return False
     if (canonicalize(obj) != canonicalize(resobj)):
         raise Exception (f"Received object does not match expected object {obj} vs {resobj}")
     return True
@@ -99,6 +105,34 @@ async def expect_error(reader, writer, err_type, timeout=6.0):
             raise Exception (f"Expected {err_type} but no error received")
     if (error != err_type):
         raise Exception (f"Expected {err_type} but received {error}")
+    return True
+
+def mempool_excludes(x,y):
+    for i in x['txids']:
+        if i in y:
+            print_error (f"Mempool must not include tx#{i}")
+            return False
+    return True
+
+def mempool_contains(x,y):
+    for i in y:
+        if (i not in x['txids']):
+            print_error (f"Transaction tx#{i} is missing in Mempool")
+            return False
+    return True
+
+functions = {
+        'mempool_excludes': mempool_excludes,
+        'mempool_contains': mempool_contains
+}
+
+async def exec_function(reader, writer, funcobj):
+    obj = await expect_get(reader)
+#    print (f"Exec Function : {funcobj}: {obj}")
+    for i in funcobj.keys():
+#        print (f"Calling {i} = {obj} -> {funcobj[i]}")
+        if (functions[i](obj, funcobj[i]) is False):
+            return False
     return True
 
 async def cleanup(reader, writer, tcobj, info_str):
@@ -126,10 +160,10 @@ async def check_ignore_error(got_error, tcobj, errstr):
 
 async def run_test():
     try:
-        reader, writer = await asyncio.open_connection(hostname, 18018,
+        reader, writer = await asyncio.open_connection(hostname, "18018",
                                        limit=512*1024)
     except Exception as e:
-        #print_error(f"failed to connect to peer:  {str(e)}")
+        print_error(f"failed to connect to peer:  {str(e)}")
         return
 
     print_info (f"\nRunning test: {tcobj['description']}")
@@ -154,7 +188,10 @@ async def run_test():
                 if (i[2] != ""):
                     if (i[2] is not None):
                         await write_msg(writer, obj)
-                        if (await(expect(reader, i[2])) is not True):
+                        if (len (i) > 3 and i[3] == 'function'):
+                            if (await(exec_function(reader, writer, i[2])) is not True):
+                                raise Exception (f"Did not receive expected answer in time")
+                        elif (await(expect(reader, i[2])) is not True):
                             raise Exception (f"Did not received expected answer in time ({expected}")
                         continue
 
@@ -213,7 +250,7 @@ for arg in sys.argv[argidx:]:
             asyncio.run(run_test())
             passed += 1
         except Exception as e:
-            print_error (f"PYTHON TEST FAILED: {e}")
+            print_error (f"TEST FAILED: {e}")
 #            print(traceback.format_exc())
 #            raise (e)
             failed += 1
